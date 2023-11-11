@@ -1,0 +1,137 @@
+warning: unused imports: `Value`, `rmpv::Utf8String`
+ --> src/app.rs:1:22
+  |
+1 | use network_tables::{rmpv::Utf8String, Value};
+  |                      ^^^^^^^^^^^^^^^^  ^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `std::collections::HashMap`
+ --> src/app.rs:9:5
+  |
+9 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `GridPosition`, `Widget`
+  --> src/app.rs:12:12
+   |
+12 |     grid::{GridPosition, ManagedGrid, Widget},
+   |            ^^^^^^^^^^^^               ^^^^^^
+
+warning: unused import: `mem::ManuallyDrop`
+ --> src/grid.rs:2:33
+  |
+2 | use std::{collections::HashMap, mem::ManuallyDrop};
+  |                                 ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `KeyCode::Char`
+  --> src/main.rs:10:31
+   |
+10 |     event::{self, Event::Key, KeyCode::Char},
+   |                               ^^^^^^^^^^^^^
+
+warning: unused imports: `Frame`, `widgets::Paragraph`
+  --> src/main.rs:17:5
+   |
+17 |     widgets::Paragraph,
+   |     ^^^^^^^^^^^^^^^^^^
+18 |     Frame,
+   |     ^^^^^
+
+warning: variable does not need to be mutable
+  --> src/main.rs:69:9
+   |
+69 |     let mut app = App::new(network_table);
+   |         ----^^^
+   |         |
+   |         help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` on by default
+
+warning: unused variable: `join`
+  --> src/main.rs:67:9
+   |
+67 |     let join = network_table.spawn_update_thread().await?;
+   |         ^^^^ help: if this is intentional, prefix it with an underscore: `_join`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: variable does not need to be mutable
+  --> src/app.rs:78:13
+   |
+78 |         let mut grid = ManagedGrid::new(10, 1);
+   |             ----^^^^
+   |             |
+   |             help: remove this `mut`
+
+warning: field `network_table` is never read
+  --> src/app.rs:18:5
+   |
+16 | pub struct App {
+   |            --- field in this struct
+17 |     grid: ManagedGrid,
+18 |     network_table: Backend,
+   |     ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: field `height` is never read
+  --> src/grid.rs:18:5
+   |
+16 | struct Grid {
+   |        ---- field in this struct
+17 |     width: usize,
+18 |     height: usize,
+   |     ^^^^^^
+
+warning: method `add_widget` is never used
+  --> src/grid.rs:23:8
+   |
+22 | impl Grid {
+   | --------- method in this implementation
+23 |     fn add_widget(&mut self, position: GridPosition, widget: Widget) {
+   |        ^^^^^^^^^^
+
+warning: field `next_position` is never read
+  --> src/grid.rs:30:5
+   |
+28 | pub struct ManagedGrid {
+   |            ----------- field in this struct
+29 |     grid: Grid,
+30 |     next_position: GridPosition,
+   |     ^^^^^^^^^^^^^
+
+warning: methods `add_widget` and `populate_from` are never used
+  --> src/grid.rs:34:12
+   |
+33 | impl ManagedGrid {
+   | ---------------- methods in this implementation
+34 |     pub fn add_widget(&mut self, widget: Widget) {
+   |            ^^^^^^^^^^
+...
+44 |     pub fn populate_from(&mut self, widgets: impl IntoIterator<Item = Widget>) {
+   |            ^^^^^^^^^^^^^
+
+warning: method `widgets` is never used
+  --> src/nt_backend.rs:29:12
+   |
+23 | impl Backend {
+   | ------------ method in this implementation
+...
+29 |     pub fn widgets(&self) -> impl IntoIterator<Item = Widget> {
+   |            ^^^^^^^
+
+warning: `smorgasbord` (bin "smorgasbord") generated 15 warnings (run `cargo fix --bin "smorgasbord"` to apply 9 suggestions)
+    Finished release [optimized] target(s) in 0.11s
+     Running `target/release/smorgasbord`
+[?1049h[1;1H┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐[2;1H│[38;5;2mSmorgasbord[2;114H[39m│[3;1H└────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘[39m[49m[59m[0m[?25l[39m[49m[59m[0m[?25lfound new message
+found new message
+found new message
+found new message
+[39m[49m[59m[0m[?25lfound new message
+found new message
+[39m[49m[59m[0m[?25lfound new message
+found new message
+[39m[49m[59m[0m[?25lfound new message
+found new message
+[?25h[?1049l
