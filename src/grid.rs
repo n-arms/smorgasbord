@@ -1,22 +1,10 @@
-use network_tables::Value;
-use ratatui::{
-    prelude::{Buffer, Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
-    text::Text,
-    widgets::{Block, Borders, Paragraph, Widget as UIWidget},
-};
+use crate::widget::Widget;
 use std::collections::HashMap;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GridPosition {
     pub x: usize,
     pub y: usize,
-}
-
-#[derive(Clone, Debug)]
-pub struct Widget {
-    pub table_id: String,
-    pub value: Option<Value>,
 }
 
 struct Grid {
@@ -53,7 +41,7 @@ impl ManagedGrid {
         for new_widget in widgets {
             let mut add = true;
             for old_widget in self.grid.widgets.values_mut() {
-                if old_widget.table_id == new_widget.table_id {
+                if old_widget.title == new_widget.title {
                     old_widget.value = new_widget.value.clone();
                     add = false;
                 }
@@ -97,38 +85,5 @@ impl ManagedGrid {
 
     pub fn get_height(&self) -> usize {
         self.grid.height
-    }
-
-    pub fn get_cells(&self) -> &HashMap<GridPosition, Widget> {
-        &self.grid.widgets
-    }
-}
-
-impl UIWidget for Widget {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        if let Some(value) = self.value {
-            let value_block = Block::default()
-                .borders(Borders::LEFT | Borders::RIGHT | Borders::BOTTOM)
-                .style(Style::default());
-            let value_widget = Paragraph::new(Text::styled(
-                value.to_string(),
-                Style::default().fg(Color::Yellow),
-            ))
-            .block(value_block);
-            let title_block = Block::default()
-                .borders(Borders::LEFT | Borders::RIGHT | Borders::TOP)
-                .style(Style::default());
-            let title_widget =
-                Paragraph::new(Text::styled(self.table_id, Style::default().fg(Color::Red)))
-                    .block(title_block);
-
-            let layout = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Min(2), Constraint::Min(2)])
-                .split(area);
-
-            title_widget.render(layout[0], buf);
-            value_widget.render(layout[1], buf);
-        }
     }
 }

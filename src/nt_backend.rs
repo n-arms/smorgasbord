@@ -13,8 +13,6 @@ use network_tables::{
 };
 use tokio::task::JoinHandle;
 
-use crate::grid::Widget;
-
 pub type Key = String;
 
 pub struct Backend {
@@ -27,16 +25,13 @@ impl Backend {
             keys: Arc::new(Mutex::new(HashMap::new())),
         })
     }
-    pub fn widgets(&self) -> impl IntoIterator<Item = Widget> {
+    pub fn pairs(&self) -> impl IntoIterator<Item = (String, Value)> {
         let widgets: Vec<_> = self
             .keys
             .lock()
             .unwrap()
             .iter()
-            .map(|(key, value)| Widget {
-                table_id: key.clone(),
-                value: Some(value.clone()),
-            })
+            .map(|(key, value)| (key.clone(), value.clone()))
             .collect();
         widgets
     }
@@ -79,6 +74,10 @@ impl Backend {
             )
             .await
             .map_err(Into::into)
+    }
+
+    pub fn with_keys<T>(&self, keys: impl FnOnce(&HashMap<String, Value>) -> T) -> T {
+        keys(&self.keys.lock().unwrap())
     }
 }
 

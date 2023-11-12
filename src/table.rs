@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
 
 use ratatui::{
     prelude::{Buffer, Constraint, Direction, Layout, Rect},

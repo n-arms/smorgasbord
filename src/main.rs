@@ -2,6 +2,8 @@ mod app;
 mod grid;
 mod nt_backend;
 mod table;
+mod widget;
+mod widget_manager;
 
 use anyhow::Result;
 use app::App;

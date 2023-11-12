@@ -9,7 +9,7 @@ use ratatui::{
 };
 use std::time::Duration;
 
-use crate::{grid::ManagedGrid, nt_backend::Backend, table::Table};
+use crate::{grid::ManagedGrid, nt_backend::Backend, table::Table, widget_manager::make_widgets};
 
 pub struct App {
     grid: ManagedGrid,
@@ -64,7 +64,8 @@ impl App {
                 }
             }
         }
-        self.grid.populate_from(self.network_table.widgets());
+        let widgets = self.network_table.with_keys(|keys| make_widgets(keys));
+        self.grid.populate_from(widgets);
         Ok(false)
     }
 
