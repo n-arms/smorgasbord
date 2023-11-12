@@ -4,8 +4,8 @@ use network_tables::{rmpv::Utf8String, Value};
 
 use crate::{
     nt_backend::Key,
+    state::widget::{Widget, WidgetKind},
     trie::{Node, NodeValue, Nodes, Trie},
-    widget::{Widget, WidgetKind},
 };
 
 #[derive(Clone, Debug)]

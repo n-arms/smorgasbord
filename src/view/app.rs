@@ -1,5 +1,3 @@
-use anyhow::Result;
-use crossterm::event::{self, Event::Key, KeyCode::Char};
 use ratatui::{
     prelude::{Constraint, Direction, Layout},
     style::{Color, Style},
@@ -7,14 +5,9 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
-use std::time::Duration;
 
-use crate::{grid::ManagedGrid, nt_backend::Backend, table::Table, widget_manager::make_widgets};
-
-pub struct App {
-    grid: ManagedGrid,
-    network_table: Backend,
-}
+use crate::state::App;
+use crate::view::table::Table;
 
 impl App {
     pub fn render(&self, f: &mut Frame<'_>) {
@@ -43,6 +36,7 @@ impl App {
             self.grid.get_widgets(),
             self.grid.get_width(),
             self.grid.get_height(),
+            self.cursor,
         );
 
         f.render_widget(table, chunks[1]);
@@ -51,28 +45,5 @@ impl App {
             .block(Block::new().borders(Borders::ALL));
 
         f.render_widget(backend_log, chunks[2]);
-    }
-
-    pub async fn update(&mut self) -> Result<bool> {
-        if event::poll(Duration::from_millis(250))? {
-            if let Key(key) = event::read()? {
-                if key.kind == event::KeyEventKind::Press {
-                    return match key.code {
-                        Char('q') => Ok(true),
-                        _ => Ok(false),
-                    };
-                }
-            }
-        }
-        let widgets = self.network_table.with_keys(make_widgets);
-        self.grid.populate_from(widgets);
-        Ok(false)
-    }
-
-    pub fn new(network_table: Backend) -> App {
-        Self {
-            grid: ManagedGrid::new(5, 2),
-            network_table,
-        }
     }
 }

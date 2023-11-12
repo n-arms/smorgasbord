@@ -1,4 +1,4 @@
-use crate::widget::Widget;
+use crate::state::widget::Widget;
 use std::collections::HashMap;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]

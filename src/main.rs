@@ -1,19 +1,16 @@
-mod app;
-mod grid;
 mod nt_backend;
-mod table;
+mod state;
 mod trie;
-mod widget;
-mod widget_manager;
+mod view;
 
 use anyhow::Result;
-use app::App;
 use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use nt_backend::Backend;
 use ratatui::prelude::{CrosstermBackend, Terminal};
+use state::App;
 
 fn startup() -> Result<()> {
     enable_raw_mode()?;

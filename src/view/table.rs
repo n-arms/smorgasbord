@@ -2,29 +2,40 @@ use std::rc::Rc;
 
 use ratatui::{
     prelude::{Buffer, Constraint, Direction, Layout, Rect},
-    widgets::Widget,
+    widgets::{StatefulWidget, Widget as UIWidget},
 };
 
-use crate::grid::GridPosition;
+use crate::state::grid::GridPosition;
+
+pub trait Selectable {
+    fn select(&mut self, is_selected: bool);
+}
 
 #[derive(Debug)]
 pub struct Table<I> {
     widgets: I,
     width: usize,
     height: usize,
+    cursor: GridPosition,
 }
 
 impl<I> Table<I> {
-    pub fn new(widgets: I, width: usize, height: usize) -> Self {
+    pub fn new(widgets: I, width: usize, height: usize, cursor: GridPosition) -> Self {
         Table {
             widgets,
             width,
             height,
+            cursor,
         }
     }
 }
 
-impl<T: Widget, I: IntoIterator<Item = (GridPosition, T)>> Widget for Table<I> {
+impl<
+        T: StatefulWidget<State = S>,
+        S: Selectable + Default,
+        I: IntoIterator<Item = (GridPosition, T)>,
+    > UIWidget for Table<I>
+{
     fn render(self, area: Rect, buf: &mut Buffer) {
         let rows_constraints = vec![Constraint::Ratio(1, self.height as u32); self.height];
         let rows_layout = Layout::default()
@@ -45,7 +56,9 @@ impl<T: Widget, I: IntoIterator<Item = (GridPosition, T)>> Widget for Table<I> {
             .collect();
 
         for (position, widget) in self.widgets {
-            widget.render(row_layouts[position.y][position.x], buf);
+            let mut state = S::default();
+            state.select(self.cursor == position);
+            widget.render(row_layouts[position.y][position.x], buf, &mut state);
         }
     }
 }

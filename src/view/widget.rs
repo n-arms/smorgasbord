@@ -1,4 +1,3 @@
-use network_tables::Value;
 use ratatui::{
     prelude::{Buffer, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -8,38 +7,44 @@ use ratatui::{
     },
 };
 
-#[derive(Clone, Debug)]
-pub struct Widget {
-    pub title: String,
-    pub value: WidgetKind,
+use crate::state::widget::{Widget, WidgetKind};
+
+use super::table::Selectable;
+
+pub struct WidgetState {
+    is_selected: bool,
 }
 
-#[derive(Clone, Debug)]
-pub enum WidgetKind {
-    Simple {
-        value: Option<Value>,
-    },
-    Chooser {
-        options: Vec<String>,
-        default: String,
-        active: String,
-    },
-}
-impl WidgetKind {
-    fn height(&self) -> u16 {
-        let raw_height = match self {
-            WidgetKind::Simple { .. } => 1,
-            WidgetKind::Chooser { options, .. } => options.len() as u16,
-        };
-        raw_height + 1
+impl Selectable for WidgetState {
+    fn select(&mut self, is_selected: bool) {
+        self.is_selected = is_selected;
     }
 }
 
-impl UIWidget for Widget {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl Default for WidgetState {
+    fn default() -> Self {
+        Self { is_selected: false }
+    }
+}
+
+impl WidgetState {
+    fn style(&self) -> Style {
+        let color = if self.is_selected {
+            Color::Magenta
+        } else {
+            Color::White
+        };
+        Style::default().fg(color)
+    }
+}
+
+impl StatefulWidget for Widget {
+    type State = WidgetState;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let title_block = Block::default()
             .borders(Borders::LEFT | Borders::RIGHT | Borders::TOP)
-            .style(Style::default());
+            .style(state.style());
         let title_widget =
             Paragraph::new(Text::styled(self.title, Style::default().fg(Color::Red)))
                 .block(title_block);
@@ -50,15 +55,17 @@ impl UIWidget for Widget {
             .split(area);
 
         title_widget.render(layout[0], buf);
-        self.value.render(layout[1], buf);
+        StatefulWidget::render(self.value, layout[1], buf, state);
     }
 }
 
-impl UIWidget for WidgetKind {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl StatefulWidget for WidgetKind {
+    type State = WidgetState;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let block = Block::default()
             .borders(Borders::LEFT | Borders::RIGHT | Borders::BOTTOM)
-            .style(Style::default().fg(Color::White));
+            .style(state.style());
         match self {
             WidgetKind::Simple { value } => {
                 let text = value
