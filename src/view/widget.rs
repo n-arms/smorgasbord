@@ -11,19 +11,25 @@ use crate::state::widget::{Widget, WidgetKind};
 
 use super::table::Selectable;
 
+#[derive(Clone)]
 pub struct WidgetState {
-    is_selected: bool,
+    pub is_selected: bool,
+    pub is_finished: bool,
 }
 
 impl Selectable for WidgetState {
     fn select(&mut self, is_selected: bool) {
         self.is_selected = is_selected;
+        self.is_finished = false;
     }
 }
 
 impl Default for WidgetState {
     fn default() -> Self {
-        Self { is_selected: false }
+        Self {
+            is_selected: false,
+            is_finished: true,
+        }
     }
 }
 
@@ -35,6 +41,24 @@ impl WidgetState {
             Color::White
         };
         Style::default().fg(color)
+    }
+
+    pub fn prompt(&self) -> String {
+        String::from("Enter B to go back")
+    }
+
+    pub fn with_text(&mut self, text: &str) {
+        println!("{:?}", text);
+        if text.to_uppercase() == "B" {
+            self.is_finished = true;
+        }
+    }
+
+    pub fn editting() -> Self {
+        Self {
+            is_selected: true,
+            is_finished: false,
+        }
     }
 }
 

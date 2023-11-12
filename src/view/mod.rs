@@ -1,3 +1,3 @@
-mod app;
-mod table;
-mod widget;
+pub mod app;
+pub mod table;
+pub mod widget;

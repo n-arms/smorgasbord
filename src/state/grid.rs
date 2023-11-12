@@ -86,4 +86,8 @@ impl ManagedGrid {
     pub fn get_height(&self) -> usize {
         self.grid.height
     }
+
+    pub fn get_widget(&self, index: &GridPosition) -> Option<&Widget> {
+        self.grid.widgets.get(index)
+    }
 }

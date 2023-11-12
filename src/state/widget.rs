@@ -1,12 +1,4 @@
 use network_tables::Value;
-use ratatui::{
-    prelude::{Buffer, Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
-    text::Text,
-    widgets::{
-        Block, Borders, List, ListItem, ListState, Paragraph, StatefulWidget, Widget as UIWidget,
-    },
-};
 
 #[derive(Clone, Debug)]
 pub struct Widget {
