@@ -77,6 +77,7 @@ impl UIWidget for WidgetKind {
                 let mut index = None;
 
                 for (i, option) in options.into_iter().enumerate() {
+                    #[allow(clippy::if_same_then_else)]
                     if option == active {
                         index = Some(i);
                     } else if option == default && index.is_none() {

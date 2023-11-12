@@ -2,6 +2,7 @@ mod app;
 mod grid;
 mod nt_backend;
 mod table;
+mod trie;
 mod widget;
 mod widget_manager;
 

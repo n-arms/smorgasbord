@@ -64,7 +64,7 @@ impl App {
                 }
             }
         }
-        let widgets = self.network_table.with_keys(|keys| make_widgets(keys));
+        let widgets = self.network_table.with_keys(make_widgets);
         self.grid.populate_from(widgets);
         Ok(false)
     }

@@ -1,7 +1,8 @@
 use std::{
-    collections::HashMap,
     fmt,
     net::{Ipv4Addr, SocketAddrV4},
+    path::{Component, PathBuf},
+    str::Utf8Error,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -13,18 +14,46 @@ use network_tables::{
 };
 use tokio::task::JoinHandle;
 
+use crate::trie::{Keys, Trie};
+
 pub type Key = String;
 
+#[derive(Debug)]
+pub enum KeyError {
+    Encoding(Utf8Error),
+    Empty,
+}
+
+pub fn from_nt_path(path: String) -> Result<Keys<Key, Vec<Key>>, KeyError> {
+    let buf = PathBuf::from(path);
+    let mut vec: Vec<String> = buf
+        .components()
+        .filter_map(|comp| {
+            if let Component::Normal(str) = comp {
+                Some(str.to_string_lossy().to_string())
+            } else {
+                None
+            }
+        })
+        .collect();
+    if vec.is_empty() {
+        return Err(KeyError::Empty);
+    }
+    let first = vec.remove(0);
+    Ok(Keys { first, rest: vec })
+}
+
 pub struct Backend {
-    keys: Arc<Mutex<HashMap<Key, Value>>>,
+    keys: Arc<Mutex<Trie<Key, Value>>>,
 }
 
 impl Backend {
     pub async fn new() -> Result<Self> {
         Ok(Backend {
-            keys: Arc::new(Mutex::new(HashMap::new())),
+            keys: Arc::new(Mutex::new(Trie::new())),
         })
     }
+    /*
     pub fn pairs(&self) -> impl IntoIterator<Item = (String, Value)> {
         let widgets: Vec<_> = self
             .keys
@@ -35,6 +64,7 @@ impl Backend {
             .collect();
         widgets
     }
+    */
     pub async fn spawn_update_thread(&self) -> Result<JoinHandle<()>> {
         let keys = Arc::clone(&self.keys);
         let handle = tokio::spawn(async move {
@@ -56,7 +86,11 @@ impl Backend {
             let mut sub = Self::subscription(&client).await.unwrap();
             while let Some(message) = sub.next().await {
                 let mut keys_inner = keys.lock().unwrap();
-                keys_inner.insert(message.topic_name, message.data);
+                match from_nt_path(message.topic_name) {
+                    Ok(path) => keys_inner.insert(path, message.data),
+                    Err(error) => panic!("{:?}", error),
+                }
+                .unwrap();
             }
         });
         Ok(handle)
@@ -76,7 +110,7 @@ impl Backend {
             .map_err(Into::into)
     }
 
-    pub fn with_keys<T>(&self, keys: impl FnOnce(&HashMap<String, Value>) -> T) -> T {
+    pub fn with_keys<T>(&self, keys: impl FnOnce(&Trie<String, Value>) -> T) -> T {
         keys(&self.keys.lock().unwrap())
     }
 }
@@ -85,12 +119,25 @@ impl fmt::Debug for Backend {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Ok(keys) = self.keys.lock() {
             write!(f, "{{")?;
-            for (i, (name, value)) in keys.iter().enumerate() {
-                if i != 0 {
-                    write!(f, ", ")?;
+            let mut is_first = true;
+            let mut result = Ok(());
+
+            keys.walk(&mut |keys, value| {
+                if is_first {
+                    is_first = false;
+                } else {
+                    result = write!(f, ", ").and(result);
                 }
-                write!(f, "\"{}\": {}", name, value)?;
-            }
+                let path = PathBuf::from(keys.join("/"));
+                if let Some(str) = path.to_str() {
+                    result = write!(f, "\"{}\": {}", str, value).and(result);
+                } else {
+                    result = write!(f, "\"{:?}\": {}", path, value).and(result);
+                }
+            });
+
+            result?;
+
             write!(f, "}}")
         } else {
             write!(f, "Mutex Poisoning")
