@@ -9,7 +9,7 @@ use ratatui::{
 };
 use std::time::Duration;
 
-use crate::{grid::ManagedGrid, nt_backend::Backend};
+use crate::{grid::ManagedGrid, nt_backend::Backend, table::Table};
 
 pub struct App {
     grid: ManagedGrid,
@@ -39,35 +39,13 @@ impl App {
 
         f.render_widget(title, chunks[0]);
 
-        let mut grid_constraints = Vec::new();
-        let mut grid_widgets = Vec::new();
+        let table = Table::new(
+            self.grid.get_widgets(),
+            self.grid.get_width(),
+            self.grid.get_height(),
+        );
 
-        for (_, widget) in self.grid.get_widgets() {
-            grid_constraints.push(Constraint::Length(16));
-
-            let block = Block::default()
-                .borders(Borders::ALL)
-                .style(Style::default());
-
-            let text = match widget.value {
-                Some(value) => value.to_string(),
-                None => "".into(),
-            };
-
-            let tui_widget =
-                Paragraph::new(Text::styled(text, Style::default().fg(Color::Yellow))).block(block);
-
-            grid_widgets.push(tui_widget);
-        }
-
-        let grid = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints(grid_constraints)
-            .split(chunks[1]);
-
-        for (i, widget) in grid_widgets.into_iter().enumerate() {
-            f.render_widget(widget, grid[i]);
-        }
+        f.render_widget(table, chunks[1]);
 
         let backend_log = Paragraph::new(format!("{:?}", self.network_table))
             .block(Block::new().borders(Borders::ALL));
@@ -92,7 +70,7 @@ impl App {
 
     pub fn new(network_table: Backend) -> App {
         Self {
-            grid: ManagedGrid::new(10, 1),
+            grid: ManagedGrid::new(5, 2),
             network_table,
         }
     }

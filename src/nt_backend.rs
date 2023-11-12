@@ -84,6 +84,17 @@ impl Backend {
 
 impl fmt::Debug for Backend {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.keys.lock().fmt(f)
+        if let Ok(keys) = self.keys.lock() {
+            write!(f, "{{")?;
+            for (i, (name, value)) in keys.iter().enumerate() {
+                if i != 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "\"{}\": {}", name, value)?;
+            }
+            write!(f, "}}")
+        } else {
+            write!(f, "Mutex Poisoning")
+        }
     }
 }

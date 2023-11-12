@@ -1,13 +1,19 @@
 use network_tables::Value;
+use ratatui::{
+    prelude::{Buffer, Constraint, Direction, Layout, Rect},
+    style::{Color, Style},
+    text::Text,
+    widgets::{Block, Borders, Paragraph, Widget as UIWidget},
+};
 use std::collections::HashMap;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GridPosition {
-    x: usize,
-    y: usize,
+    pub x: usize,
+    pub y: usize,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Widget {
     pub table_id: String,
     pub value: Option<Value>,
@@ -32,7 +38,9 @@ pub struct ManagedGrid {
 
 impl ManagedGrid {
     pub fn add_widget(&mut self, widget: Widget) {
-        self.grid.add_widget(self.next_position, widget);
+        if self.next_position.y < self.grid.height {
+            self.grid.add_widget(self.next_position, widget);
+        }
         self.next_position.x += 1;
 
         if self.next_position.x == self.grid.width {
@@ -80,6 +88,47 @@ impl ManagedGrid {
                 widgets: HashMap::default(),
             },
             next_position: GridPosition { x: 0, y: 0 },
+        }
+    }
+
+    pub fn get_width(&self) -> usize {
+        self.grid.width
+    }
+
+    pub fn get_height(&self) -> usize {
+        self.grid.height
+    }
+
+    pub fn get_cells(&self) -> &HashMap<GridPosition, Widget> {
+        &self.grid.widgets
+    }
+}
+
+impl UIWidget for Widget {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        if let Some(value) = self.value {
+            let value_block = Block::default()
+                .borders(Borders::LEFT | Borders::RIGHT | Borders::BOTTOM)
+                .style(Style::default());
+            let value_widget = Paragraph::new(Text::styled(
+                value.to_string(),
+                Style::default().fg(Color::Yellow),
+            ))
+            .block(value_block);
+            let title_block = Block::default()
+                .borders(Borders::LEFT | Borders::RIGHT | Borders::TOP)
+                .style(Style::default());
+            let title_widget =
+                Paragraph::new(Text::styled(self.table_id, Style::default().fg(Color::Red)))
+                    .block(title_block);
+
+            let layout = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(2), Constraint::Min(2)])
+                .split(area);
+
+            title_widget.render(layout[0], buf);
+            value_widget.render(layout[1], buf);
         }
     }
 }

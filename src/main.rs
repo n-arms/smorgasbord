@@ -1,6 +1,7 @@
 mod app;
 mod grid;
 mod nt_backend;
+mod table;
 
 use anyhow::Result;
 use app::App;
