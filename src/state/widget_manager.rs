@@ -2,9 +2,9 @@ use std::path::PathBuf;
 
 use network_tables::{rmpv::Utf8String, Value};
 
+use crate::widgets::{Builder, Widget};
 use crate::{
     nt_backend::Key,
-    state::widget::{Widget, WidgetKind},
     trie::{Node, NodeValue, Nodes, Trie},
 };
 
@@ -16,6 +16,65 @@ pub enum WidgetError {
     EncodingError(Utf8String),
 }
 
+#[derive(Default)]
+pub struct WidgetManager {
+    builders: Vec<Box<dyn Builder>>,
+}
+
+impl WidgetManager {
+    pub fn new(builders: Vec<Box<dyn Builder>>) -> Self {
+        Self { builders }
+    }
+
+    pub fn with(mut self, builder: impl Builder + 'static) -> Self {
+        self.builders.push(Box::new(builder));
+        self
+    }
+
+    pub fn add(&mut self, builder: impl Builder + 'static) {
+        self.builders.push(Box::new(builder))
+    }
+
+    pub fn widgets(&self, data: &Trie<Key, Value>) -> impl IntoIterator<Item = Widget> {
+        let mut output = Vec::new();
+        self.visit_nodes(&data.root, Vec::new(), &mut output);
+        output
+    }
+
+    pub fn visit_nodes(
+        &self,
+        data: &Nodes<Key, Value>,
+        prefix: Vec<String>,
+        output: &mut Vec<Widget>,
+    ) {
+        for node in &data.nodes {
+            self.visit_node(node, prefix.clone(), output);
+        }
+    }
+
+    pub fn visit_node(
+        &self,
+        data: &Node<Key, Value>,
+        mut prefix: Vec<String>,
+        output: &mut Vec<Widget>,
+    ) {
+        prefix.push(data.key.clone());
+
+        for builder in &self.builders {
+            let Some(kind) = builder.create_kind(&data.value) else {
+                continue;
+            };
+            let widget = Widget::new(prefix.join("/"), kind);
+            output.push(widget);
+            return;
+        }
+
+        if let NodeValue::Branch(nodes) = &data.value {
+            self.visit_nodes(nodes, prefix, output);
+        }
+    }
+}
+/*
 pub fn make_widgets(data: &Trie<Key, Value>) -> impl IntoIterator<Item = Widget> {
     let mut output = Vec::new();
     nodes_into_widgets(&data.root, Vec::new(), &mut output);
@@ -51,7 +110,7 @@ fn expect_string_array(value: Value) -> Result<Vec<String>, WidgetError> {
         _ => Err(WidgetError::IncorrectField(value, "string[]".to_string())),
     }
 }
-
+/*
 fn string_chooser(nodes: &Nodes<Key, Value>) -> Result<Option<WidgetKind>, WidgetError> {
     let Ok(type_value) = expect_value(nodes, ".type") else {
         return Ok(None);
@@ -72,8 +131,10 @@ fn string_chooser(nodes: &Nodes<Key, Value>) -> Result<Option<WidgetKind>, Widge
         active: expect_string(active)?,
     }))
 }
+*/
 
 fn nodes_into_widgets(nodes: &Nodes<Key, Value>, prefix: Vec<String>, output: &mut Vec<Widget>) {
+    /*
     if let Some(widget_kind) = string_chooser(nodes).unwrap() {
         let title_path = PathBuf::from(prefix.join("/"));
         output.push(Widget {
@@ -82,6 +143,7 @@ fn nodes_into_widgets(nodes: &Nodes<Key, Value>, prefix: Vec<String>, output: &m
         });
         return;
     }
+        */
     for node in &nodes.nodes {
         node_into_widgets(node, prefix.clone(), output);
     }
@@ -96,6 +158,7 @@ fn node_into_widgets(node: &Node<Key, Value>, mut prefix: Vec<String>, output: &
                 .to_str()
                 .unwrap()
                 .to_string();
+            /*
             let widget = WidgetKind::Simple {
                 value: Some(value.clone()),
             };
@@ -103,9 +166,11 @@ fn node_into_widgets(node: &Node<Key, Value>, mut prefix: Vec<String>, output: &
                 title,
                 value: widget,
             });
+            */
         }
         NodeValue::Branch(branches) => {
             nodes_into_widgets(branches, prefix, output);
         }
     }
 }
+*/

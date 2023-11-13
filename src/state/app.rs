@@ -6,13 +6,12 @@ use std::time::Duration;
 use crate::nt_backend::Backend;
 use crate::state::{
     grid::{GridPosition, ManagedGrid},
-    widget_manager::make_widgets,
+    widget_manager::WidgetManager,
 };
+use crate::widgets::{sendable_chooser, simple};
 
 use thiserror::Error;
 use tui_input::{Input, InputRequest};
-
-use crate::view::widget::WidgetState;
 
 pub struct App {
     pub grid: ManagedGrid,
@@ -30,13 +29,14 @@ pub struct Edit {
     pub editting: GridPosition,
     pub text_field: Input,
     pub prompt: String,
-    pub state: WidgetState,
 }
 
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("Cursor {cursor:?} is invalid")]
     InvalidCursor { cursor: GridPosition },
+    #[error("Widget at position {position:?} disappeared while editting")]
+    RunawayWidget { position: GridPosition },
 }
 
 impl App {
@@ -66,9 +66,13 @@ impl App {
                             _ => {}
                         },
                         State::Edit(edit) => {
+                            let Some(widget) = self.grid.get_mut_widget(&edit.editting) else {
+                                println!("widget at position {:?} was removed while editting", edit.editting);
+                                return Err(Error::RunawayWidget { position: edit.editting }.into());
+                            };
                             match key.code {
                                 KeyCode::Enter => {
-                                    edit.state.with_text(edit.text_field.value());
+                                    widget.update(edit.text_field.value());
                                     edit.text_field.reset();
                                 }
                                 KeyCode::Left => {
@@ -84,11 +88,12 @@ impl App {
                                     edit.text_field.handle(InputRequest::InsertChar(c));
                                 }
                                 KeyCode::Esc => {
-                                    edit.state.is_finished = true;
+                                    self.state = State::View;
+                                    return Ok(false);
                                 }
                                 _ => {}
                             };
-                            if edit.state.is_finished {
+                            if widget.is_finished() {
                                 self.state = State::View;
                             }
                         }
@@ -96,19 +101,21 @@ impl App {
                 }
             }
         }
-        let widgets = self.network_table.with_keys(make_widgets);
+        let mut manager = WidgetManager::default()
+            .with(simple::Builder)
+            .with(sendable_chooser::Builder);
+        let widgets = self.network_table.with_keys(|trie| manager.widgets(trie));
         self.grid.populate_from(widgets);
         Ok(false)
     }
 
     fn try_edit(&mut self) {
-        if self.grid.get_widget(&self.cursor).is_some() {
-            let widget_state = WidgetState::editting();
+        if let Some(widget) = self.grid.get_mut_widget(&self.cursor) {
+            widget.reset();
             self.state = State::Edit(Edit {
                 editting: self.cursor,
                 text_field: Input::new(String::new()),
-                prompt: widget_state.prompt(),
-                state: widget_state,
+                prompt: widget.prompt(),
             });
         }
     }

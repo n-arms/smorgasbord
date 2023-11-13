@@ -202,4 +202,11 @@ impl<K: Eq + Clone, V: Clone> NodeValue<K, V> {
             }
         }
     }
+
+    pub fn try_get_nodes(&self) -> Option<&Nodes<K, V>> {
+        match self {
+            NodeValue::Leaf(_) => None,
+            NodeValue::Branch(nodes) => Some(nodes),
+        }
+    }
 }

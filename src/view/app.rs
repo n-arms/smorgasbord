@@ -9,8 +9,7 @@ use ratatui::{
 use crate::state::app::State;
 use crate::state::App;
 use crate::view::table::Table;
-
-use super::widget::WidgetState;
+use crate::widgets;
 
 impl App {
     pub fn render(&self, f: &mut Frame<'_>) {
@@ -35,28 +34,22 @@ impl App {
 
         f.render_widget(title, chunks[0]);
 
+        let cursor_state = match self.state {
+            State::View => widgets::State::Highlighted,
+            State::Edit(_) => widgets::State::Selected,
+        };
+
         let table = Table::new(
             self.grid.get_widgets(),
             self.grid.get_width(),
             self.grid.get_height(),
             self.cursor,
-            self.cursor_state(),
+            cursor_state,
         );
 
         f.render_widget(table, chunks[1]);
 
         self.render_edit_window(chunks[2], f.buffer_mut());
-    }
-
-    fn cursor_state(&self) -> WidgetState {
-        if let State::Edit(edit) = &self.state {
-            edit.state.clone()
-        } else {
-            WidgetState {
-                is_selected: true,
-                is_finished: true,
-            }
-        }
     }
 
     fn render_edit_window(&self, area: Rect, buf: &mut Buffer) {

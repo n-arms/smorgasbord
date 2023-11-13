@@ -2,6 +2,7 @@ mod nt_backend;
 mod state;
 mod trie;
 mod view;
+mod widgets;
 
 use anyhow::Result;
 use crossterm::{
@@ -32,12 +33,12 @@ async fn run() -> Result<()> {
     let join = network_table.spawn_update_thread().await?;
     // application state
     let mut app = App::new(network_table);
+    t.draw(|f| app.render(f))?;
     loop {
-        t.draw(|f| app.render(f))?;
-
         if app.update().await? {
             break;
         }
+        t.draw(|f| app.render(f))?;
     }
 
     Ok(())

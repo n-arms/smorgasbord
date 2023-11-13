@@ -1,4 +1,4 @@
-use crate::state::widget::Widget;
+use crate::widgets::Widget;
 use std::collections::HashMap;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -42,7 +42,7 @@ impl ManagedGrid {
             let mut add = true;
             for old_widget in self.grid.widgets.values_mut() {
                 if old_widget.title == new_widget.title {
-                    old_widget.value = new_widget.value.clone();
+                    old_widget.value = new_widget.value.clone_box();
                     add = false;
                 }
             }
@@ -87,7 +87,7 @@ impl ManagedGrid {
         self.grid.height
     }
 
-    pub fn get_widget(&self, index: &GridPosition) -> Option<&Widget> {
-        self.grid.widgets.get(index)
+    pub fn get_mut_widget(&mut self, index: &GridPosition) -> Option<&mut Widget> {
+        self.grid.widgets.get_mut(index)
     }
 }

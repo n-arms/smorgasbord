@@ -6,27 +6,28 @@ use ratatui::{
 };
 
 use crate::state::grid::GridPosition;
+use crate::widgets::State;
 
 pub trait Selectable {
     fn select(&mut self, is_selected: bool);
 }
 
 #[derive(Debug)]
-pub struct Table<I, S> {
+pub struct Table<I> {
     widgets: I,
     width: usize,
     height: usize,
     cursor: GridPosition,
-    cursor_state: S,
+    cursor_state: State,
 }
 
-impl<I, S> Table<I, S> {
+impl<I> Table<I> {
     pub fn new(
         widgets: I,
         width: usize,
         height: usize,
         cursor: GridPosition,
-        cursor_state: S,
+        cursor_state: State,
     ) -> Self {
         Table {
             widgets,
@@ -38,11 +39,8 @@ impl<I, S> Table<I, S> {
     }
 }
 
-impl<
-        T: StatefulWidget<State = S>,
-        S: Clone + Default,
-        I: IntoIterator<Item = (GridPosition, T)>,
-    > UIWidget for Table<I, S>
+impl<T: StatefulWidget<State = State>, I: IntoIterator<Item = (GridPosition, T)>> UIWidget
+    for Table<I>
 {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let rows_constraints = vec![Constraint::Ratio(1, self.height as u32); self.height];
@@ -67,7 +65,7 @@ impl<
             let mut state = if position == self.cursor {
                 self.cursor_state.clone()
             } else {
-                S::default()
+                State::Unhighlighted
             };
             widget.render(row_layouts[position.y][position.x], buf, &mut state);
         }
