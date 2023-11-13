@@ -8,7 +8,7 @@ use ratatui::{
 };
 
 use crate::{
-    nt_backend::Key,
+    nt::Key,
     trie::{NodeValue, Nodes},
 };
 
@@ -129,10 +129,11 @@ impl Kind for SendableChooser {
     }
 
     fn update_nt(&mut self, nt: &NodeValue<Key, Value>) {
-        match SendableChooser::try_from(nt) {
-            Ok(value) => *self = value,
-            Err(_) => todo!(),
-        }
+        let Ok(value) = SendableChooser::try_from(nt) else {
+            todo!();
+        };
+        self.options = value.options;
+        self.default = value.default;
     }
 
     fn reset(&mut self) {

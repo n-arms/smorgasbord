@@ -6,7 +6,7 @@ use ratatui::{
 };
 use std::fmt::Debug;
 
-use crate::{nt_backend::Key, trie::NodeValue};
+use crate::{nt::Key, trie::NodeValue};
 
 #[derive(Debug)]
 pub struct Widget {
@@ -84,6 +84,10 @@ impl Widget {
 
     pub fn update(&mut self, text: &str) {
         self.value.update(text)
+    }
+
+    pub fn update_nt(&mut self, nt: &NodeValue<Key, Value>) {
+        self.value.update_nt(nt)
     }
 
     pub fn is_finished(&self) -> bool {

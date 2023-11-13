@@ -1,4 +1,10 @@
-use crate::widgets::Widget;
+use network_tables::Value;
+
+use crate::{
+    nt::{from_nt_path, Key},
+    trie::{Keys, KeysRef, Trie},
+    widgets::Widget,
+};
 use std::collections::HashMap;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -89,5 +95,26 @@ impl ManagedGrid {
 
     pub fn get_mut_widget(&mut self, index: &GridPosition) -> Option<&mut Widget> {
         self.grid.widgets.get_mut(index)
+    }
+
+    pub fn has_widget(&self, widget: &Widget) -> bool {
+        for existing_widget in self.grid.widgets.values() {
+            if &existing_widget.title == &widget.title {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn update_widgets(&mut self, trie: &Trie<Key, Value>) {
+        for widget in self.grid.widgets.values_mut() {
+            let keys = from_nt_path(widget.title.clone()).unwrap();
+            let key_ref = KeysRef {
+                first: &keys.first,
+                rest: keys.rest.iter(),
+            };
+            let relevant_nt = trie.get_subtrie(key_ref).unwrap();
+            widget.update_nt(relevant_nt);
+        }
     }
 }

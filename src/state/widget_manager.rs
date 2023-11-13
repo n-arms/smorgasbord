@@ -1,10 +1,8 @@
-use std::path::PathBuf;
-
 use network_tables::{rmpv::Utf8String, Value};
 
 use crate::widgets::{Builder, Widget};
 use crate::{
-    nt_backend::Key,
+    nt::Key,
     trie::{Node, NodeValue, Nodes, Trie},
 };
 
@@ -35,7 +33,7 @@ impl WidgetManager {
         self.builders.push(Box::new(builder))
     }
 
-    pub fn widgets(&self, data: &Trie<Key, Value>) -> impl IntoIterator<Item = Widget> {
+    pub fn widgets(&self, data: &Trie<Key, Value>) -> Vec<Widget> {
         let mut output = Vec::new();
         self.visit_nodes(&data.root, Vec::new(), &mut output);
         output

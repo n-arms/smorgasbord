@@ -17,14 +17,15 @@ pub enum NodeValue<K, V> {
     Branch(Nodes<K, V>),
 }
 
+#[derive(Clone)]
 pub struct Keys<K, I> {
     pub first: K,
     pub rest: I,
 }
 
 pub struct KeysRef<'a, K, I> {
-    first: &'a K,
-    rest: I,
+    pub first: &'a K,
+    pub rest: I,
 }
 
 impl<K, I: Iterator<Item = K>> Keys<K, I> {
@@ -85,6 +86,16 @@ impl<K: Eq + Clone, V: Clone> Trie<K, V> {
     {
         self.root.get(keys.first, keys.rest)
     }
+
+    pub fn get_subtrie<'a, I: Iterator<Item = &'a K>>(
+        &self,
+        keys: KeysRef<'a, K, I>,
+    ) -> Option<&NodeValue<K, V>>
+    where
+        K: 'a,
+    {
+        self.root.get_subtrie(keys.first, keys.rest)
+    }
 }
 
 impl<K: Clone, V> Nodes<K, V> {
@@ -125,6 +136,22 @@ impl<K: Eq + Clone, V: Clone> Nodes<K, V> {
             }
         }
         Ok(None)
+    }
+
+    fn get_subtrie<'a>(
+        &self,
+        first: &'a K,
+        rest: impl Iterator<Item = &'a K>,
+    ) -> Option<&NodeValue<K, V>>
+    where
+        K: 'a,
+    {
+        for node in self.nodes.iter() {
+            if &node.key == first {
+                return node.value.get_subtrie(rest);
+            }
+        }
+        None
     }
 }
 
@@ -200,6 +227,19 @@ impl<K: Eq + Clone, V: Clone> NodeValue<K, V> {
                     Err(TrieError::ExpectedValue(branches.clone()))
                 }
             }
+        }
+    }
+
+    fn get_subtrie<'a>(&self, mut rest: impl Iterator<Item = &'a K>) -> Option<&NodeValue<K, V>>
+    where
+        K: 'a,
+    {
+        match rest.next() {
+            Some(next) => match self {
+                NodeValue::Leaf(_) => None,
+                NodeValue::Branch(branches) => branches.get_subtrie(next, rest),
+            },
+            None => Some(self),
         }
     }
 

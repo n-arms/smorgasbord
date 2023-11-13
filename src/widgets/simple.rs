@@ -4,7 +4,7 @@ use ratatui::{
     widgets::{Paragraph, Widget},
 };
 
-use crate::{nt_backend::Key, trie::NodeValue};
+use crate::{nt::Key, trie::NodeValue};
 
 use super::widget::{self, Kind};
 

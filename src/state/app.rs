@@ -3,7 +3,7 @@ use crossterm::event::KeyCode;
 use crossterm::event::{self, Event::Key, KeyCode::Char};
 use std::time::Duration;
 
-use crate::nt_backend::Backend;
+use crate::nt::{Backend, Update};
 use crate::state::{
     grid::{GridPosition, ManagedGrid},
     widget_manager::WidgetManager,
@@ -16,6 +16,7 @@ use tui_input::{Input, InputRequest};
 pub struct App {
     pub grid: ManagedGrid,
     pub network_table: Backend,
+    pub widget_manager: WidgetManager,
     pub cursor: GridPosition,
     pub state: State,
 }
@@ -101,11 +102,14 @@ impl App {
                 }
             }
         }
-        let mut manager = WidgetManager::default()
-            .with(simple::Builder)
-            .with(sendable_chooser::Builder);
-        let widgets = self.network_table.with_keys(|trie| manager.widgets(trie));
-        self.grid.populate_from(widgets);
+        let Update {
+            to_update,
+            to_create,
+        } = self.network_table.update();
+        let mut all_widgets = self.widget_manager.widgets(&self.network_table.trie);
+        all_widgets.retain(|widget| !self.grid.has_widget(widget));
+        self.grid.populate_from(all_widgets);
+        self.grid.update_widgets(&self.network_table.trie);
         Ok(false)
     }
 
@@ -139,11 +143,15 @@ impl App {
     }
 
     pub fn new(network_table: Backend) -> App {
+        let widget_manager = WidgetManager::default()
+            .with(simple::Builder)
+            .with(sendable_chooser::Builder);
         Self {
             grid: ManagedGrid::new(5, 2),
             network_table,
             cursor: GridPosition::default(),
             state: State::View,
+            widget_manager,
         }
     }
 }

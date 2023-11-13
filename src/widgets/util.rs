@@ -1,7 +1,7 @@
 use network_tables::Value;
 
 use crate::{
-    nt_backend::Key,
+    nt::Key,
     trie::{NodeValue, Nodes},
 };
 

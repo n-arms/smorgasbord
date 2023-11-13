@@ -1,4 +1,4 @@
-mod nt_backend;
+mod nt;
 mod state;
 mod trie;
 mod view;
@@ -9,7 +9,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use nt_backend::Backend;
+use nt::Backend;
 use ratatui::prelude::{CrosstermBackend, Terminal};
 use state::App;
 
@@ -29,8 +29,7 @@ async fn run() -> Result<()> {
     // ratatui terminal
     let mut t = Terminal::new(CrosstermBackend::new(std::io::stderr()))?;
 
-    let network_table = Backend::new().await?;
-    let join = network_table.spawn_update_thread().await?;
+    let network_table = Backend::new().await;
     // application state
     let mut app = App::new(network_table);
     t.draw(|f| app.render(f))?;
