@@ -2,7 +2,7 @@ use network_tables::Value;
 
 use crate::{
     nt::{from_nt_path, Key},
-    trie::{Keys, KeysRef, Trie},
+    trie::{KeysRef, Trie},
     widgets::Widget,
 };
 use std::collections::HashMap;
@@ -108,10 +108,9 @@ impl ManagedGrid {
 
     pub fn update_widgets(&mut self, trie: &Trie<Key, Value>) {
         for widget in self.grid.widgets.values_mut() {
-            let keys = from_nt_path(widget.title.clone()).unwrap();
             let key_ref = KeysRef {
-                first: &keys.first,
-                rest: keys.rest.iter(),
+                first: &widget.title.first,
+                rest: widget.title.rest.iter(),
             };
             let relevant_nt = trie.get_subtrie(key_ref).unwrap();
             widget.update_nt(relevant_nt);

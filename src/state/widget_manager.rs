@@ -1,5 +1,6 @@
 use network_tables::{rmpv::Utf8String, Value};
 
+use crate::trie::Keys;
 use crate::widgets::{Builder, Widget};
 use crate::{
     nt::Key,
@@ -62,7 +63,8 @@ impl WidgetManager {
             let Some(kind) = builder.create_kind(&data) else {
                 continue;
             };
-            let widget = Widget::new(prefix.join("/"), kind);
+            let path = Keys::from_vec(prefix).unwrap();
+            let widget = Widget::new(path, kind);
             output.push(widget);
             return;
         }

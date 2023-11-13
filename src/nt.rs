@@ -1,3 +1,4 @@
+use core::fmt;
 use std::{
     net::{Ipv4Addr, SocketAddrV4},
     path::{Component, PathBuf},
@@ -17,6 +18,8 @@ use network_tables::{
 use crate::trie::{Keys, Trie};
 use anyhow::Result;
 
+pub type Path = Keys<Key, Vec<Key>>;
+
 const UPDATE_CHANNEL_SIZE: usize = 128;
 
 #[derive(Copy, Clone, Default)]
@@ -26,21 +29,26 @@ pub struct Status {
 
 pub struct Backend {
     pub trie: Trie<Key, Value>,
-    updates: Receiver<(Key, Value)>,
+    updates: Receiver<(Path, Value)>,
     network_thread: JoinHandle<()>,
     pub status: Status,
     status_updates: Receiver<Status>,
 }
 
 enum UpdateAction {
-    Create(Keys<Key, Vec<Key>>),
-    Update(Keys<Key, Vec<Key>>),
+    Create(Entry),
+    Update(Entry),
     End,
 }
 
+pub struct Entry {
+    pub path: Path,
+    pub value: Value,
+}
+
 pub struct Update {
-    pub to_update: Vec<Keys<Key, Vec<Key>>>,
-    pub to_create: Vec<Keys<Key, Vec<Key>>>,
+    pub to_update: Vec<Entry>,
+    pub to_create: Vec<Entry>,
 }
 
 impl Backend {
@@ -64,8 +72,8 @@ impl Backend {
         loop {
             let action = self.nonblocking_update_poll();
             match action {
-                UpdateAction::Create(keys) => to_create.push(keys),
-                UpdateAction::Update(keys) => to_update.push(keys),
+                UpdateAction::Create(entry) => to_create.push(entry),
+                UpdateAction::Update(entry) => to_update.push(entry),
                 UpdateAction::End => {
                     return Update {
                         to_create,
@@ -80,11 +88,10 @@ impl Backend {
         let Ok((path, value)) = self.updates.try_recv() else {
             return UpdateAction::End;
         };
-        let keys = from_nt_path(path).unwrap();
-        let result = self.trie.insert(keys.clone(), value).unwrap(); // TODO
+        let result = self.trie.insert(path.clone(), value.clone()).unwrap(); // TODO
         match result {
-            Some(_) => UpdateAction::Update(keys),
-            None => UpdateAction::Create(keys),
+            Some(_) => UpdateAction::Update(Entry { path, value }),
+            None => UpdateAction::Create(Entry { path, value }),
         }
     }
 
@@ -95,7 +102,7 @@ impl Backend {
     }
 }
 
-fn update_thread() -> (Receiver<(Key, Value)>, JoinHandle<()>, Receiver<Status>) {
+fn update_thread() -> (Receiver<(Path, Value)>, JoinHandle<()>, Receiver<Status>) {
     let (sender, receiver) = channel(UPDATE_CHANNEL_SIZE);
     let (status_send, status_recv) = channel(UPDATE_CHANNEL_SIZE);
     let handle = tokio::spawn(async move {
@@ -128,10 +135,10 @@ async fn subscribe(client: &Client) -> Result<Subscription> {
         .map_err(Into::into)
 }
 
-async fn forward_messages(mut sub: Subscription, sender: &Sender<(String, Value)>) {
+async fn forward_messages(mut sub: Subscription, sender: &Sender<(Path, Value)>) {
     while let Some(message) = sub.next().await {
         sender
-            .send((message.topic_name, message.data))
+            .send((from_nt_path(message.topic_name).unwrap(), message.data))
             .await
             .unwrap(); // TODO
     }
@@ -177,4 +184,14 @@ pub fn from_nt_path(path: String) -> Result<Keys<Key, Vec<Key>>, KeyError> {
     }
     let first = vec.remove(0);
     Ok(Keys { first, rest: vec })
+}
+
+impl fmt::Display for Path {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.first.fmt(f)?;
+        for comp in &self.rest {
+            write!(f, "/{}", comp)?;
+        }
+        Ok(())
+    }
 }

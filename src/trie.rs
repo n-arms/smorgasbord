@@ -17,7 +17,7 @@ pub enum NodeValue<K, V> {
     Branch(Nodes<K, V>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Keys<K, I> {
     pub first: K,
     pub rest: I,
@@ -28,10 +28,10 @@ pub struct KeysRef<'a, K, I> {
     pub rest: I,
 }
 
-impl<K, I: Iterator<Item = K>> Keys<K, I> {
-    pub fn new<T: IntoIterator<Item = K, IntoIter = I>>(items: T) -> Option<Self> {
-        let mut rest = items.into_iter();
-        let first = rest.next()?;
+impl<K> Keys<K, Vec<K>> {
+    pub fn from_vec(items: Vec<K>) -> Option<Self> {
+        let mut rest = items;
+        let first = rest.remove(0);
         Some(Keys { first, rest })
     }
 }

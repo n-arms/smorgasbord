@@ -7,13 +7,13 @@ use ratatui::{
 use std::fmt::Debug;
 
 use crate::{
-    nt::Key,
+    nt::{Key, Path},
     trie::{Node, NodeValue},
 };
 
 #[derive(Debug)]
 pub struct Widget {
-    pub title: String,
+    pub title: Path,
     pub value: Box<dyn Kind>,
 }
 
@@ -56,7 +56,7 @@ impl StatefulWidget for Widget {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_style(style)
-            .title(self.title)
+            .title(self.title.to_string())
             .title_style(style);
         self.value.render(block.inner(area), buf);
         block.render(area, buf);
@@ -73,7 +73,7 @@ impl Clone for Widget {
 }
 
 impl Widget {
-    pub fn new(title: String, value: Box<dyn Kind>) -> Self {
+    pub fn new(title: Path, value: Box<dyn Kind>) -> Self {
         Self { title, value }
     }
 
