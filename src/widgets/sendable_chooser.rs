@@ -101,7 +101,6 @@ impl Kind for SendableChooser {
             .map(ListItem::new)
             .collect();
         let index = self.active.unwrap_or(self.default);
-        println!("found index {} from active index {:?}", index, self.active);
 
         let widget = List::new(items)
             .style(Style::default().fg(Color::White))
@@ -119,13 +118,11 @@ impl Kind for SendableChooser {
     fn update(&mut self, text: &str) {
         for (i, option) in self.options.iter().enumerate() {
             if option == text {
-                println!("found option at index {}", i);
                 self.active = Some(i);
                 self.is_finished = true;
                 return;
             }
         }
-        println!("did not find option {:?}", text.as_bytes());
     }
 
     fn update_nt(&mut self, nt: &NodeValue<Key, Value>) {

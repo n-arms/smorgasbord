@@ -1,15 +1,15 @@
 use ratatui::{
-    prelude::{Buffer, Constraint, Direction, Layout, Rect},
+    prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Text,
     widgets::{Block, Borders, Paragraph, Widget as UIWidget},
     Frame,
 };
 
-use crate::state::app::State;
 use crate::state::App;
 use crate::view::table::Table;
 use crate::widgets;
+use crate::{nt::Status, state::app::State};
 
 impl App {
     pub fn render(&self, f: &mut Frame<'_>) {
@@ -22,17 +22,7 @@ impl App {
             ])
             .split(f.size());
 
-        let title_block = Block::default()
-            .borders(Borders::ALL)
-            .style(Style::default());
-
-        let title = Paragraph::new(Text::styled(
-            "Smorgasbord",
-            Style::default().fg(Color::Green),
-        ))
-        .block(title_block);
-
-        f.render_widget(title, chunks[0]);
+        self.render_title(chunks[0], f.buffer_mut());
 
         let cursor_state = match self.state {
             State::View => widgets::State::Highlighted,
@@ -70,5 +60,38 @@ impl App {
                 input.render(area, buf);
             }
         }
+    }
+
+    fn render_title(&self, area: Rect, buf: &mut Buffer) {
+        let title_block = Block::default()
+            .borders(Borders::ALL)
+            .style(Style::default());
+
+        let layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .split(title_block.inner(area));
+
+        let title = Paragraph::new("Smorgasbord");
+
+        let status = self.network_table.status;
+
+        title_block.render(area, buf);
+        title.render(layout[0], buf);
+        status.render(layout[1], buf)
+    }
+}
+
+impl UIWidget for Status {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let (color, text) = if self.is_connected {
+            (Color::Green, "Connected")
+        } else {
+            (Color::Red, "Disconnected")
+        };
+        let widget = Paragraph::new(text)
+            .style(Style::default().fg(color))
+            .alignment(Alignment::Right);
+        widget.render(area, buf);
     }
 }

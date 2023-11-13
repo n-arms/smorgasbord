@@ -1,11 +1,15 @@
 use std::{
     net::{Ipv4Addr, SocketAddrV4},
     path::{Component, PathBuf},
+    sync::Arc,
     time::Duration,
 };
 
 use tokio::{
-    sync::mpsc::{channel, Receiver, Sender},
+    sync::{
+        mpsc::{channel, Receiver, Sender},
+        Mutex,
+    },
     task::JoinHandle,
 };
 
@@ -20,10 +24,17 @@ use anyhow::Result;
 
 const UPDATE_CHANNEL_SIZE: usize = 128;
 
+#[derive(Copy, Clone, Default)]
+pub struct Status {
+    pub is_connected: bool,
+}
+
 pub struct Backend {
     pub trie: Trie<Key, Value>,
     updates: Receiver<(Key, Value)>,
     network_thread: JoinHandle<()>,
+    pub status: Status,
+    status_updates: Receiver<Status>,
 }
 
 enum UpdateAction {
@@ -39,16 +50,20 @@ pub struct Update {
 
 impl Backend {
     pub async fn new() -> Self {
-        let (updates, network_thread) = update_thread();
+        let status = Status::default();
+        let (updates, network_thread, status_updates) = update_thread();
 
         Self {
             trie: Trie::new(),
             updates,
             network_thread,
+            status,
+            status_updates,
         }
     }
 
     pub fn update(&mut self) -> Update {
+        self.update_status();
         let mut to_create = Vec::new();
         let mut to_update = Vec::new();
         loop {
@@ -77,19 +92,31 @@ impl Backend {
             None => UpdateAction::Create(keys),
         }
     }
+
+    fn update_status(&mut self) {
+        if let Ok(new_status) = self.status_updates.try_recv() {
+            self.status = new_status;
+        }
+    }
 }
 
-fn update_thread() -> (Receiver<(Key, Value)>, JoinHandle<()>) {
+fn update_thread() -> (Receiver<(Key, Value)>, JoinHandle<()>, Receiver<Status>) {
     let (sender, receiver) = channel(128);
+    let (status_send, status_recv) = channel(128);
     let handle = tokio::spawn(async move {
+        let mut status = Status::default();
         loop {
+            status.is_connected = false;
+            status_send.send(status).await.unwrap();
             let client =
                 connect_to_client(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 5810)).await;
+            status.is_connected = true;
+            status_send.send(status).await.unwrap();
             let sub = subscribe(&client).await.unwrap(); // TODO
             forward_messages(sub, &sender).await;
         }
     });
-    (receiver, handle)
+    (receiver, handle, status_recv)
 }
 
 async fn subscribe(client: &Client) -> Result<Subscription> {

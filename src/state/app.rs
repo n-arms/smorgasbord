@@ -68,7 +68,6 @@ impl App {
                         },
                         State::Edit(edit) => {
                             let Some(widget) = self.grid.get_mut_widget(&edit.editting) else {
-                                println!("widget at position {:?} was removed while editting", edit.editting);
                                 return Err(Error::RunawayWidget { position: edit.editting }.into());
                             };
                             match key.code {
