@@ -59,7 +59,7 @@ impl WidgetManager {
         prefix.push(data.key.clone());
 
         for builder in &self.builders {
-            let Some(kind) = builder.create_kind(&data.value) else {
+            let Some(kind) = builder.create_kind(&data) else {
                 continue;
             };
             let widget = Widget::new(prefix.join("/"), kind);

@@ -90,7 +90,7 @@ impl<K: Eq + Clone, V: Clone> Trie<K, V> {
     pub fn get_subtrie<'a, I: Iterator<Item = &'a K>>(
         &self,
         keys: KeysRef<'a, K, I>,
-    ) -> Option<&NodeValue<K, V>>
+    ) -> Option<&Node<K, V>>
     where
         K: 'a,
     {
@@ -141,14 +141,29 @@ impl<K: Eq + Clone, V: Clone> Nodes<K, V> {
     fn get_subtrie<'a>(
         &self,
         first: &'a K,
-        rest: impl Iterator<Item = &'a K>,
-    ) -> Option<&NodeValue<K, V>>
+        mut rest: impl Iterator<Item = &'a K>,
+    ) -> Option<&Node<K, V>>
     where
         K: 'a,
     {
         for node in self.nodes.iter() {
             if &node.key == first {
-                return node.value.get_subtrie(rest);
+                return match &node.value {
+                    NodeValue::Leaf(_) => {
+                        if rest.next().is_none() {
+                            Some(node)
+                        } else {
+                            None
+                        }
+                    }
+                    NodeValue::Branch(branches) => {
+                        if let Some(next) = rest.next() {
+                            branches.get_subtrie(next, rest)
+                        } else {
+                            None
+                        }
+                    }
+                };
             }
         }
         None
@@ -227,19 +242,6 @@ impl<K: Eq + Clone, V: Clone> NodeValue<K, V> {
                     Err(TrieError::ExpectedValue(branches.clone()))
                 }
             }
-        }
-    }
-
-    fn get_subtrie<'a>(&self, mut rest: impl Iterator<Item = &'a K>) -> Option<&NodeValue<K, V>>
-    where
-        K: 'a,
-    {
-        match rest.next() {
-            Some(next) => match self {
-                NodeValue::Leaf(_) => None,
-                NodeValue::Branch(branches) => branches.get_subtrie(next, rest),
-            },
-            None => Some(self),
         }
     }
 

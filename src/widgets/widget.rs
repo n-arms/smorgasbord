@@ -6,7 +6,10 @@ use ratatui::{
 };
 use std::fmt::Debug;
 
-use crate::{nt::Key, trie::NodeValue};
+use crate::{
+    nt::Key,
+    trie::{Node, NodeValue},
+};
 
 #[derive(Debug)]
 pub struct Widget {
@@ -25,14 +28,14 @@ pub trait Kind: Debug {
     fn render(&self, area: Rect, buf: &mut Buffer);
     fn prompt(&self) -> String;
     fn update(&mut self, text: &str);
-    fn update_nt(&mut self, nt: &NodeValue<Key, Value>);
+    fn update_nt(&mut self, nt: &Node<Key, Value>);
     fn reset(&mut self);
     fn is_finished(&self) -> bool;
     fn clone_box(&self) -> Box<dyn Kind>;
 }
 
 pub trait Builder {
-    fn create_kind(&self, nt: &NodeValue<Key, Value>) -> Option<Box<dyn Kind>>;
+    fn create_kind(&self, nt: &Node<Key, Value>) -> Option<Box<dyn Kind>>;
 }
 
 const UNHIGHLIGHTED_COLOR: Color = Color::White;
@@ -86,7 +89,7 @@ impl Widget {
         self.value.update(text)
     }
 
-    pub fn update_nt(&mut self, nt: &NodeValue<Key, Value>) {
+    pub fn update_nt(&mut self, nt: &Node<Key, Value>) {
         self.value.update_nt(nt)
     }
 

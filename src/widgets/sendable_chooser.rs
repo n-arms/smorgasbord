@@ -9,7 +9,7 @@ use ratatui::{
 
 use crate::{
     nt::Key,
-    trie::{NodeValue, Nodes},
+    trie::{Node, NodeValue, Nodes},
 };
 
 use super::{
@@ -36,11 +36,11 @@ pub enum Error {
     IllegalSelection,
 }
 
-impl TryFrom<&NodeValue<Key, Value>> for SendableChooser {
+impl TryFrom<&Node<Key, Value>> for SendableChooser {
     type Error = Error;
 
-    fn try_from(data: &NodeValue<Key, Value>) -> Result<Self, Self::Error> {
-        let nodes = data.try_get_nodes().ok_or(Error::WantedNodes)?;
+    fn try_from(data: &Node<Key, Value>) -> Result<Self, Self::Error> {
+        let nodes = data.value.try_get_nodes().ok_or(Error::WantedNodes)?;
         let r#type = nodes
             .try_get_value(".type")
             .ok_or(Error::MissingType)?
@@ -125,7 +125,7 @@ impl Kind for SendableChooser {
         }
     }
 
-    fn update_nt(&mut self, nt: &NodeValue<Key, Value>) {
+    fn update_nt(&mut self, nt: &Node<Key, Value>) {
         let Ok(value) = SendableChooser::try_from(nt) else {
             todo!();
         };
@@ -149,7 +149,7 @@ impl Kind for SendableChooser {
 pub struct Builder;
 
 impl widget::Builder for Builder {
-    fn create_kind(&self, nt: &NodeValue<Key, Value>) -> Option<Box<dyn Kind>> {
+    fn create_kind(&self, nt: &Node<Key, Value>) -> Option<Box<dyn Kind>> {
         let widget = SendableChooser::try_from(nt).ok()?;
         Some(Box::new(widget))
     }

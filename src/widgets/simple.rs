@@ -4,7 +4,10 @@ use ratatui::{
     widgets::{Paragraph, Widget},
 };
 
-use crate::{nt::Key, trie::NodeValue};
+use crate::{
+    nt::Key,
+    trie::{Node, NodeValue},
+};
 
 use super::widget::{self, Kind};
 
@@ -25,8 +28,8 @@ impl Kind for Simple {
 
     fn update(&mut self, _text: &str) {}
 
-    fn update_nt(&mut self, nt: &NodeValue<Key, Value>) {
-        if let NodeValue::Leaf(value) = nt {
+    fn update_nt(&mut self, nt: &Node<Key, Value>) {
+        if let NodeValue::Leaf(value) = &nt.value {
             self.value = value.clone();
         }
     }
@@ -45,13 +48,17 @@ impl Kind for Simple {
 pub struct Builder;
 
 impl widget::Builder for Builder {
-    fn create_kind(&self, nt: &NodeValue<Key, Value>) -> Option<Box<dyn Kind>> {
-        let NodeValue::Leaf(value) = nt else {
+    fn create_kind(&self, nt: &Node<Key, Value>) -> Option<Box<dyn Kind>> {
+        let NodeValue::Leaf(value) = &nt.value else {
             return None
         };
 
-        Some(Box::new(Simple {
-            value: value.clone(),
-        }))
+        if nt.key.starts_with(".") {
+            None
+        } else {
+            Some(Box::new(Simple {
+                value: value.clone(),
+            }))
+        }
     }
 }
