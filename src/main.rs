@@ -56,9 +56,6 @@ async fn run() -> Result<()> {
                 event!(Level::ERROR, "top level error {}", error)
             }
         }
-        if app.update().await? {
-            break;
-        }
         t.draw(|f| app.render(f))?;
     }
 

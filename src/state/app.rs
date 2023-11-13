@@ -144,7 +144,7 @@ impl App {
             .with(simple::Builder)
             .with(sendable_chooser::Builder);
         Self {
-            grid: ManagedGrid::new(5, 2),
+            grid: ManagedGrid::new(5, 5),
             network_table,
             cursor: GridPosition::default(),
             state: State::View,
