@@ -72,7 +72,8 @@ impl App {
                             };
                             match key.code {
                                 KeyCode::Enter => {
-                                    widget.update(edit.text_field.value());
+                                    self.network_table
+                                        .write(widget.update(edit.text_field.value()));
                                     edit.text_field.reset();
                                 }
                                 KeyCode::Left => {
@@ -101,10 +102,7 @@ impl App {
                 }
             }
         }
-        let Update {
-            to_update,
-            to_create,
-        } = self.network_table.update();
+        let Update { .. } = self.network_table.update();
         let mut all_widgets = self.widget_manager.widgets(&self.network_table.trie);
         all_widgets.retain(|widget| !self.grid.has_widget(widget));
         self.grid.populate_from(all_widgets);

@@ -1,7 +1,7 @@
 use network_tables::Value;
 
 use crate::{
-    nt::{from_nt_path, Key},
+    nt::Key,
     trie::{KeysRef, Trie},
     widgets::Widget,
 };
@@ -99,7 +99,7 @@ impl ManagedGrid {
 
     pub fn has_widget(&self, widget: &Widget) -> bool {
         for existing_widget in self.grid.widgets.values() {
-            if &existing_widget.title == &widget.title {
+            if existing_widget.title == widget.title {
                 return true;
             }
         }

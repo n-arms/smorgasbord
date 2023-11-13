@@ -1,4 +1,5 @@
 mod nt;
+mod nt_worker;
 mod state;
 mod trie;
 mod view;
@@ -19,7 +20,8 @@ use tracing_subscriber::fmt::Subscriber;
 
 fn init_logging() -> Result<()> {
     let file = fs::OpenOptions::new().write(true).open("smorgasbord.log")?;
-    Ok(Subscriber::builder().with_writer(file).init())
+    Subscriber::builder().with_writer(file).init();
+    Ok(())
 }
 
 fn startup() -> Result<()> {

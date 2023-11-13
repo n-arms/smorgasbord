@@ -5,7 +5,7 @@ use ratatui::{
 };
 
 use crate::{
-    nt::Key,
+    nt::{Key, Path, Write},
     trie::{Node, NodeValue},
 };
 
@@ -26,7 +26,9 @@ impl Kind for Simple {
         String::from("Simple widgets are constant")
     }
 
-    fn update(&mut self, _text: &str) {}
+    fn update(&mut self, _path: &Path, _text: &str) -> Write {
+        Write::default()
+    }
 
     fn update_nt(&mut self, nt: &Node<Key, Value>) {
         if let NodeValue::Leaf(value) = &nt.value {
@@ -53,7 +55,7 @@ impl widget::Builder for Builder {
             return None
         };
 
-        if nt.key.starts_with(".") {
+        if nt.key.starts_with('.') {
             None
         } else {
             Some(Box::new(Simple {

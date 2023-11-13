@@ -2,13 +2,13 @@ use network_tables::Value;
 use ratatui::{
     prelude::{Buffer, Rect},
     style::{Color, Style},
-    widgets::{Block, Borders, Paragraph, StatefulWidget, Widget as UIWidget},
+    widgets::{Block, Borders, StatefulWidget, Widget as UIWidget},
 };
 use std::fmt::Debug;
 
 use crate::{
-    nt::{Key, Path},
-    trie::{Node, NodeValue},
+    nt::{Key, Path, Write},
+    trie::Node,
 };
 
 #[derive(Debug)]
@@ -27,7 +27,7 @@ pub enum State {
 pub trait Kind: Debug {
     fn render(&self, area: Rect, buf: &mut Buffer);
     fn prompt(&self) -> String;
-    fn update(&mut self, text: &str);
+    fn update(&mut self, path: &Path, text: &str) -> Write;
     fn update_nt(&mut self, nt: &Node<Key, Value>);
     fn reset(&mut self);
     fn is_finished(&self) -> bool;
@@ -85,8 +85,8 @@ impl Widget {
         self.value.prompt()
     }
 
-    pub fn update(&mut self, text: &str) {
-        self.value.update(text)
+    pub fn update(&mut self, text: &str) -> Write {
+        self.value.update(&self.title, text)
     }
 
     pub fn update_nt(&mut self, nt: &Node<Key, Value>) {

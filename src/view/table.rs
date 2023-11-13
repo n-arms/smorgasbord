@@ -63,7 +63,7 @@ impl<T: StatefulWidget<State = State>, I: IntoIterator<Item = (GridPosition, T)>
 
         for (position, widget) in self.widgets {
             let mut state = if position == self.cursor {
-                self.cursor_state.clone()
+                self.cursor_state
             } else {
                 State::Unhighlighted
             };

@@ -31,7 +31,7 @@ impl NTValue for Value {
 impl Nodes<Key, Value> {
     pub fn try_get_value(&self, key: &str) -> Option<&Value> {
         for node in &self.nodes {
-            if &node.key == key {
+            if node.key == key {
                 return node.value.try_get_value();
             }
         }

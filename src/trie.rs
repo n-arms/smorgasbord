@@ -1,28 +1,31 @@
-use std::mem::swap;
+#![allow(dead_code)]
 
-#[derive(Clone, Debug)]
+use std::{fmt, mem::swap};
+
+#[derive(Clone)]
 pub struct Nodes<K, V> {
     pub nodes: Vec<Node<K, V>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Node<K, V> {
     pub key: K,
     pub value: NodeValue<K, V>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum NodeValue<K, V> {
     Leaf(V),
     Branch(Nodes<K, V>),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Keys<K, I> {
     pub first: K,
     pub rest: I,
 }
 
+#[derive(Debug)]
 pub struct KeysRef<'a, K, I> {
     pub first: &'a K,
     pub rest: I,
@@ -33,6 +36,10 @@ impl<K> Keys<K, Vec<K>> {
         let mut rest = items;
         let first = rest.remove(0);
         Some(Keys { first, rest })
+    }
+
+    pub fn push(&mut self, arg: impl Into<K>) {
+        self.rest.push(arg.into());
     }
 }
 
@@ -62,13 +69,12 @@ impl<K: Clone, V> Trie<K, V> {
     }
 }
 
-#[derive(Debug)]
 pub enum TrieError<K, V> {
     ExpectedBranch(V),
     ExpectedValue(Nodes<K, V>),
 }
 
-impl<K: Eq + Clone, V: Clone> Trie<K, V> {
+impl<K: Eq + Clone + fmt::Debug, V: Clone + fmt::Debug + fmt::Display> Trie<K, V> {
     pub fn insert<I: IntoIterator<Item = K>>(
         &mut self,
         keys: Keys<K, I>,
@@ -87,7 +93,7 @@ impl<K: Eq + Clone, V: Clone> Trie<K, V> {
         self.root.get(keys.first, keys.rest)
     }
 
-    pub fn get_subtrie<'a, I: Iterator<Item = &'a K>>(
+    pub fn get_subtrie<'a, I: Iterator<Item = &'a K> + fmt::Debug>(
         &self,
         keys: KeysRef<'a, K, I>,
     ) -> Option<&Node<K, V>>
@@ -106,7 +112,7 @@ impl<K: Clone, V> Nodes<K, V> {
     }
 }
 
-impl<K: Eq + Clone, V: Clone> Nodes<K, V> {
+impl<K: Eq + Clone + fmt::Debug, V: Clone + fmt::Debug + fmt::Display> Nodes<K, V> {
     fn insert(
         &mut self,
         first: K,
@@ -141,7 +147,7 @@ impl<K: Eq + Clone, V: Clone> Nodes<K, V> {
     fn get_subtrie<'a>(
         &self,
         first: &'a K,
-        mut rest: impl Iterator<Item = &'a K>,
+        mut rest: impl Iterator<Item = &'a K> + fmt::Debug,
     ) -> Option<&Node<K, V>>
     where
         K: 'a,
@@ -160,7 +166,7 @@ impl<K: Eq + Clone, V: Clone> Nodes<K, V> {
                         if let Some(next) = rest.next() {
                             branches.get_subtrie(next, rest)
                         } else {
-                            None
+                            Some(node)
                         }
                     }
                 };
@@ -180,7 +186,7 @@ impl<K: Clone, V> Node<K, V> {
     }
 }
 
-impl<K: Eq + Clone, V: Clone> Node<K, V> {
+impl<K: Eq + Clone + fmt::Debug, V: Clone + fmt::Debug + fmt::Display> Node<K, V> {
     fn new(first: K, keys: impl Iterator<Item = K>, value: V) -> Self {
         Self {
             key: first,
@@ -189,7 +195,7 @@ impl<K: Eq + Clone, V: Clone> Node<K, V> {
     }
 }
 
-impl<K: Eq + Clone, V: Clone> NodeValue<K, V> {
+impl<K: Eq + Clone + fmt::Debug, V: Clone + fmt::Display + fmt::Debug> NodeValue<K, V> {
     fn new(mut keys: impl Iterator<Item = K>, value: V) -> Self {
         match keys.next() {
             Some(key) => Self::Branch(Nodes {
@@ -249,6 +255,44 @@ impl<K: Eq + Clone, V: Clone> NodeValue<K, V> {
         match self {
             NodeValue::Leaf(_) => None,
             NodeValue::Branch(nodes) => Some(nodes),
+        }
+    }
+}
+
+impl<K: fmt::Debug, V: fmt::Display> fmt::Debug for Trie<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.root.fmt(f)
+    }
+}
+
+impl<K: fmt::Debug, V: fmt::Display> fmt::Debug for Nodes<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map()
+            .entries(self.nodes.iter().map(|node| (&node.key, &node.value)))
+            .finish()
+    }
+}
+
+impl<K: fmt::Debug, V: fmt::Display> fmt::Debug for Node<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map().entry(&self.key, &self.value).finish()
+    }
+}
+
+impl<K: fmt::Debug, V: fmt::Display> fmt::Debug for NodeValue<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            NodeValue::Leaf(value) => write!(f, "{}", value),
+            NodeValue::Branch(branches) => branches.fmt(f),
+        }
+    }
+}
+
+impl<K: fmt::Debug, V: fmt::Display> fmt::Debug for TrieError<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TrieError::ExpectedBranch(value) => write!(f, "{}", value),
+            TrieError::ExpectedValue(branches) => branches.fmt(f),
         }
     }
 }

@@ -1,38 +1,56 @@
 use core::fmt;
-use std::{
-    net::{Ipv4Addr, SocketAddrV4},
-    path::{Component, PathBuf},
-    time::Duration,
-};
+use std::path::{Component, PathBuf};
 
-use tokio::{
-    sync::mpsc::{channel, Receiver, Sender},
-    task::JoinHandle,
-};
+use thiserror::Error;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
-use network_tables::{
-    v4::{Client, Subscription},
-    Value,
-};
+use network_tables::Value;
+use tracing::{event, Level};
 
-use crate::trie::{Keys, Trie};
+use crate::{
+    nt_worker::Worker,
+    trie::{Keys, Trie},
+};
 use anyhow::Result;
 
 pub type Path = Keys<Key, Vec<Key>>;
-
-const UPDATE_CHANNEL_SIZE: usize = 128;
 
 #[derive(Copy, Clone, Default)]
 pub struct Status {
     pub is_connected: bool,
 }
+impl Status {
+    fn update(&mut self, update: StatusUpdate) {
+        match update {
+            StatusUpdate::IsConnectedChange(is_connected) => self.is_connected = is_connected,
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+pub enum StatusUpdate {
+    IsConnectedChange(bool),
+}
 
 pub struct Backend {
     pub trie: Trie<Key, Value>,
-    updates: Receiver<(Path, Value)>,
-    network_thread: JoinHandle<()>,
+    read_receiver: UnboundedReceiver<Entry>,
+    write_sender: UnboundedSender<Entry>,
     pub status: Status,
-    status_updates: Receiver<Status>,
+    status_receiver: UnboundedReceiver<StatusUpdate>,
+}
+
+#[derive(Default)]
+pub struct Write {
+    entries: Vec<Entry>,
+}
+
+impl Write {
+    pub fn one(entry: Entry) -> Write {
+        Write {
+            entries: vec![entry],
+        }
+    }
 }
 
 enum UpdateAction {
@@ -41,6 +59,7 @@ enum UpdateAction {
     End,
 }
 
+#[derive(Debug)]
 pub struct Entry {
     pub path: Path,
     pub value: Value,
@@ -53,15 +72,21 @@ pub struct Update {
 
 impl Backend {
     pub async fn new() -> Self {
-        let status = Status::default();
-        let (updates, network_thread, status_updates) = update_thread();
+        let (read_sender, read_receiver) = unbounded_channel();
+        let (write_sender, write_receiver) = unbounded_channel();
+        let (status_sender, status_receiver) = unbounded_channel();
+
+        tokio::spawn(async move {
+            let worker = Worker::new(read_sender, write_receiver, status_sender).await;
+            worker.run().await;
+        });
 
         Self {
             trie: Trie::new(),
-            updates,
-            network_thread,
-            status,
-            status_updates,
+            read_receiver,
+            write_sender,
+            status: Status::default(),
+            status_receiver,
         }
     }
 
@@ -85,7 +110,7 @@ impl Backend {
     }
 
     fn nonblocking_update_poll(&mut self) -> UpdateAction {
-        let Ok((path, value)) = self.updates.try_recv() else {
+        let Ok(Entry { path, value }) = self.read_receiver.try_recv() else {
             return UpdateAction::End;
         };
         let result = self.trie.insert(path.clone(), value.clone()).unwrap(); // TODO
@@ -96,74 +121,28 @@ impl Backend {
     }
 
     fn update_status(&mut self) {
-        if let Ok(new_status) = self.status_updates.try_recv() {
-            self.status = new_status;
+        if let Ok(update) = self.status_receiver.try_recv() {
+            self.status.update(update);
         }
     }
-}
 
-fn update_thread() -> (Receiver<(Path, Value)>, JoinHandle<()>, Receiver<Status>) {
-    let (sender, receiver) = channel(UPDATE_CHANNEL_SIZE);
-    let (status_send, status_recv) = channel(UPDATE_CHANNEL_SIZE);
-    let handle = tokio::spawn(async move {
-        let mut status = Status::default();
-        loop {
-            status.is_connected = false;
-            status_send.send(status).await.unwrap();
-            let client =
-                connect_to_client(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 5810)).await;
-            status.is_connected = true;
-            status_send.send(status).await.unwrap();
-            let sub = subscribe(&client).await.unwrap(); // TODO
-            forward_messages(sub, &sender).await;
+    pub fn write(&self, write: Write) {
+        for entry in write.entries {
+            self.write_update(entry);
         }
-    });
-    (receiver, handle, status_recv)
-}
-
-async fn subscribe(client: &Client) -> Result<Subscription> {
-    client
-        .subscribe_w_options(
-            &["/SmartDashboard"],
-            Some(network_tables::v4::SubscriptionOptions {
-                all: Some(true),
-                prefix: Some(true),
-                ..Default::default()
-            }),
-        )
-        .await
-        .map_err(Into::into)
-}
-
-async fn forward_messages(mut sub: Subscription, sender: &Sender<(Path, Value)>) {
-    while let Some(message) = sub.next().await {
-        sender
-            .send((from_nt_path(message.topic_name).unwrap(), message.data))
-            .await
-            .unwrap(); // TODO
     }
-}
 
-async fn connect_to_client(new: SocketAddrV4) -> Client {
-    loop {
-        let maybe_client = network_tables::v4::Client::try_new_w_config(
-            SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 5810),
-            network_tables::v4::client_config::Config {
-                ..Default::default()
-            },
-        )
-        .await;
-        if let Ok(c) = maybe_client {
-            return c;
-        }
-        tokio::time::sleep(Duration::from_millis(250)).await;
+    fn write_update(&self, entry: Entry) {
+        event!(Level::INFO, "writing {:?}", entry);
+        self.write_sender.send(entry).unwrap()
     }
 }
 
 pub type Key = String;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum KeyError {
+    #[error("Paths must have at least 1 component")]
     Empty,
 }
 
@@ -188,7 +167,7 @@ pub fn from_nt_path(path: String) -> Result<Keys<Key, Vec<Key>>, KeyError> {
 
 impl fmt::Display for Path {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.first.fmt(f)?;
+        write!(f, "/{}", self.first)?;
         for comp in &self.rest {
             write!(f, "/{}", comp)?;
         }

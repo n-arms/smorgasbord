@@ -1,7 +1,6 @@
 use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    text::Text,
     widgets::{Block, Borders, Paragraph, Widget as UIWidget},
     Frame,
 };

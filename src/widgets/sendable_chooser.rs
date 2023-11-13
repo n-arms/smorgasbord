@@ -1,15 +1,13 @@
-use std::collections::hash_map::DefaultHasher;
-
 use network_tables::Value;
 use ratatui::{
     prelude::{Buffer, Rect},
     style::{Color, Style},
-    widgets::{List, ListItem, ListState, Paragraph, StatefulWidget, Widget},
+    widgets::{List, ListItem, ListState, StatefulWidget},
 };
 
 use crate::{
-    nt::Key,
-    trie::{Node, NodeValue, Nodes},
+    nt::{Entry, Key, Path, Write},
+    trie::Node,
 };
 
 use super::{
@@ -56,7 +54,7 @@ impl TryFrom<&Node<Key, Value>> for SendableChooser {
             .and_then(|value| value.try_to_string_array())
             .ok_or(Error::MissingOptions)?;
         let active_name = nodes
-            .try_get_value("active")
+            .try_get_value("selected")
             .and_then(|value| value.try_to_string());
         let default_name = nodes
             .try_get_value("default")
@@ -115,14 +113,20 @@ impl Kind for SendableChooser {
         String::from("Enter an option")
     }
 
-    fn update(&mut self, text: &str) {
+    fn update(&mut self, path: &Path, text: &str) -> Write {
         for (i, option) in self.options.iter().enumerate() {
             if option == text {
                 self.active = Some(i);
                 self.is_finished = true;
-                return;
+                let mut path = path.clone();
+                path.push("selected");
+                return Write::one(Entry {
+                    path,
+                    value: Value::String(text.into()),
+                });
             }
         }
+        Write::default()
     }
 
     fn update_nt(&mut self, nt: &Node<Key, Value>) {
