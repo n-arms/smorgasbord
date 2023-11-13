@@ -4,6 +4,8 @@ mod trie;
 mod view;
 mod widgets;
 
+use std::fs;
+
 use anyhow::Result;
 use crossterm::{
     execute,
@@ -12,8 +14,16 @@ use crossterm::{
 use nt::Backend;
 use ratatui::prelude::{CrosstermBackend, Terminal};
 use state::App;
+use tracing::{event, Level};
+use tracing_subscriber::fmt::Subscriber;
+
+fn init_logging() -> Result<()> {
+    let file = fs::OpenOptions::new().write(true).open("smorgasbord.log")?;
+    Ok(Subscriber::builder().with_writer(file).init())
+}
 
 fn startup() -> Result<()> {
+    init_logging()?;
     enable_raw_mode()?;
     execute!(std::io::stderr(), EnterAlternateScreen)?;
     Ok(())
@@ -34,6 +44,16 @@ async fn run() -> Result<()> {
     let mut app = App::new(network_table);
     t.draw(|f| app.render(f))?;
     loop {
+        match app.update().await {
+            Ok(result) => {
+                if result {
+                    break;
+                }
+            }
+            Err(error) => {
+                event!(Level::ERROR, "top level error {}", error)
+            }
+        }
         if app.update().await? {
             break;
         }

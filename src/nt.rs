@@ -1,20 +1,15 @@
 use std::{
     net::{Ipv4Addr, SocketAddrV4},
     path::{Component, PathBuf},
-    sync::Arc,
     time::Duration,
 };
 
 use tokio::{
-    sync::{
-        mpsc::{channel, Receiver, Sender},
-        Mutex,
-    },
+    sync::mpsc::{channel, Receiver, Sender},
     task::JoinHandle,
 };
 
 use network_tables::{
-    rmpv::ext::from_value,
     v4::{Client, Subscription},
     Value,
 };
@@ -101,8 +96,8 @@ impl Backend {
 }
 
 fn update_thread() -> (Receiver<(Key, Value)>, JoinHandle<()>, Receiver<Status>) {
-    let (sender, receiver) = channel(128);
-    let (status_send, status_recv) = channel(128);
+    let (sender, receiver) = channel(UPDATE_CHANNEL_SIZE);
+    let (status_send, status_recv) = channel(UPDATE_CHANNEL_SIZE);
     let handle = tokio::spawn(async move {
         let mut status = Status::default();
         loop {
