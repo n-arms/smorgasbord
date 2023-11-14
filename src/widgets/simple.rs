@@ -9,7 +9,7 @@ use crate::{
     trie::{Node, NodeValue},
 };
 
-use super::widget::{self, Kind};
+use super::widget::{self, Kind, Size};
 
 #[derive(Clone, Debug)]
 pub struct Simple {
@@ -40,6 +40,13 @@ impl Kind for Simple {
 
     fn is_finished(&self) -> bool {
         true
+    }
+
+    fn size(&self) -> Size {
+        Size {
+            width: 1,
+            height: 1,
+        }
     }
 
     fn clone_box(&self) -> Box<dyn Kind> {

@@ -12,7 +12,7 @@ use crate::{
 
 use super::{
     util::NTValue,
-    widget::{self, Kind},
+    widget::{self, Kind, Size},
 };
 
 #[derive(Clone, Debug)]
@@ -143,6 +143,13 @@ impl Kind for SendableChooser {
 
     fn is_finished(&self) -> bool {
         self.is_finished
+    }
+
+    fn size(&self) -> Size {
+        Size {
+            width: 1,
+            height: 2,
+        }
     }
 
     fn clone_box(&self) -> Box<dyn Kind> {

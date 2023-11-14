@@ -24,6 +24,12 @@ pub enum State {
     Selected,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct Size {
+    pub width: usize,
+    pub height: usize,
+}
+
 pub trait Kind: Debug {
     fn render(&self, area: Rect, buf: &mut Buffer);
     fn prompt(&self) -> String;
@@ -31,6 +37,7 @@ pub trait Kind: Debug {
     fn update_nt(&mut self, nt: &Node<Key, Value>);
     fn reset(&mut self);
     fn is_finished(&self) -> bool;
+    fn size(&self) -> Size;
     fn clone_box(&self) -> Box<dyn Kind>;
 }
 

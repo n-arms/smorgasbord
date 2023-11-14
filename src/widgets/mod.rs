@@ -3,4 +3,4 @@ pub mod simple;
 mod util;
 mod widget;
 
-pub use widget::{Builder, Kind, State, Widget};
+pub use widget::{Builder, Kind, Size, State, Widget};
