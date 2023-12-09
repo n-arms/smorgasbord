@@ -1,4 +1,4 @@
-use network_tables::Value;
+use anyhow::Error;
 use ratatui::{
     prelude::{Buffer, Rect},
     style::{Color, Style},
@@ -8,7 +8,7 @@ use std::fmt::Debug;
 
 use crate::{
     nt::{Key, Path, Write},
-    trie::Node,
+    widget_tree::{Node, Value},
 };
 
 #[derive(Debug)]
@@ -34,15 +34,21 @@ pub trait Kind: Debug {
     fn render(&self, area: Rect, buf: &mut Buffer);
     fn prompt(&self) -> String;
     fn update(&mut self, path: &Path, text: &str) -> Write;
-    fn update_nt(&mut self, nt: &Node<Key, Value>);
+    fn update_nt(&mut self, key: &Key, value: &Value);
     fn reset(&mut self);
     fn is_finished(&self) -> bool;
     fn size(&self) -> Size;
     fn clone_box(&self) -> Box<dyn Kind>;
 }
 
+pub enum BuildResult {
+    Complete(Box<dyn Kind>),
+    Partial(Error),
+    None,
+}
+
 pub trait Builder {
-    fn create_kind(&self, nt: &Node<Key, Value>) -> Option<Box<dyn Kind>>;
+    fn create_kind(&self, nt: &Node) -> BuildResult;
 }
 
 const UNHIGHLIGHTED_COLOR: Color = Color::White;
@@ -96,8 +102,8 @@ impl Widget {
         self.value.update(&self.title, text)
     }
 
-    pub fn update_nt(&mut self, nt: &Node<Key, Value>) {
-        self.value.update_nt(nt)
+    pub fn update_nt(&mut self, key: &Key, value: &Value) {
+        self.value.update_nt(key, value)
     }
 
     pub fn is_finished(&self) -> bool {

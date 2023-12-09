@@ -3,6 +3,7 @@ mod nt_worker;
 mod state;
 mod trie;
 mod view;
+mod widget_tree;
 mod widgets;
 
 use std::fs;

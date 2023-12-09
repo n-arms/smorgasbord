@@ -106,7 +106,7 @@ impl App {
         let mut all_widgets = self.widget_manager.widgets(&self.network_table.trie);
         all_widgets.retain(|widget| !self.grid.has_widget(widget));
         self.grid.populate_from(all_widgets);
-        self.grid.update_widgets(&self.network_table.trie);
+        //self.grid.update_widgets(&self.network_table.trie);
         Ok(false)
     }
 
@@ -144,7 +144,7 @@ impl App {
             .with(simple::Builder)
             .with(sendable_chooser::Builder);
         Self {
-            grid: ManagedGrid::new(3, 3),
+            grid: ManagedGrid::new(4, 2),
             network_table,
             cursor: GridPosition::default(),
             state: State::View,

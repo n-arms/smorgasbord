@@ -1,4 +1,3 @@
-use network_tables::Value;
 use ratatui::{
     prelude::{Buffer, Rect},
     widgets::{Paragraph, Widget},
@@ -6,14 +5,17 @@ use ratatui::{
 
 use crate::{
     nt::{Key, Path, Write},
-    trie::{Node, NodeValue},
+    widget_tree::{Node, Value},
 };
 
-use super::widget::{self, Kind, Size};
+use super::{
+    widget::{self, Kind, Size},
+    BuildResult,
+};
 
 #[derive(Clone, Debug)]
 pub struct Simple {
-    value: Value,
+    value: network_tables::Value,
 }
 
 impl Kind for Simple {
@@ -30,8 +32,8 @@ impl Kind for Simple {
         Write::default()
     }
 
-    fn update_nt(&mut self, nt: &Node<Key, Value>) {
-        if let NodeValue::Leaf(value) = &nt.value {
+    fn update_nt(&mut self, _key: &Key, value: &Value) {
+        if let Value::Leaf(value) = &value {
             self.value = value.clone();
         }
     }
@@ -57,15 +59,15 @@ impl Kind for Simple {
 pub struct Builder;
 
 impl widget::Builder for Builder {
-    fn create_kind(&self, nt: &Node<Key, Value>) -> Option<Box<dyn Kind>> {
-        let NodeValue::Leaf(value) = &nt.value else {
-            return None
+    fn create_kind(&self, nt: &Node) -> BuildResult {
+        let Value::Leaf(value) = &nt.value else {
+            return BuildResult::None;
         };
 
         if nt.key.starts_with('.') {
-            None
+            BuildResult::None
         } else {
-            Some(Box::new(Simple {
+            BuildResult::Complete(Box::new(Simple {
                 value: value.clone(),
             }))
         }

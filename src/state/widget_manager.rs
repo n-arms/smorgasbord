@@ -54,9 +54,12 @@ impl WidgetManager {
         prefix.push(data.key.clone());
 
         for builder in &self.builders {
-            let Some(kind) = builder.create_kind(data) else {
-                continue;
-            };
+            /*
+                let Some(kind) = builder.create_kind(data) else {
+                    continue;
+                };
+            */
+            let kind = todo!();
             let path = Keys::from_vec(prefix).unwrap();
             let widget = Widget::new(path, kind);
             output.push(widget);

@@ -1,4 +1,3 @@
-use network_tables::Value;
 use ratatui::{
     prelude::{Buffer, Rect},
     style::{Color, Style},
@@ -7,13 +6,16 @@ use ratatui::{
 
 use crate::{
     nt::{Entry, Key, Path, Write},
-    trie::Node,
+    widget_tree::{Node, Value},
 };
 
 use super::{
     util::NTValue,
     widget::{self, Kind, Size},
+    BuildResult,
 };
+
+use thiserror::Error;
 
 #[derive(Clone, Debug)]
 pub struct SendableChooser {
@@ -23,22 +25,29 @@ pub struct SendableChooser {
     is_finished: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum Error {
+    #[error("want nodes")]
     WantedNodes,
+    #[error("missing .type")]
     MissingType,
+    #[error(".type isn't a string")]
     TypeNotString,
+    #[error(".type is {0}")]
     IncorrectType(String),
+    #[error("missing options")]
     MissingOptions,
+    #[error("missing default")]
     MissingDefault,
+    #[error("illegal selection")]
     IllegalSelection,
 }
 
-impl TryFrom<&Node<Key, Value>> for SendableChooser {
+impl TryFrom<&Value> for SendableChooser {
     type Error = Error;
 
-    fn try_from(data: &Node<Key, Value>) -> Result<Self, Self::Error> {
-        let nodes = data.value.try_get_nodes().ok_or(Error::WantedNodes)?;
+    fn try_from(value: &Value) -> Result<Self, Self::Error> {
+        let nodes = value.try_get_nodes().ok_or(Error::WantedNodes)?;
         let r#type = nodes
             .try_get_value(".type")
             .ok_or(Error::MissingType)?
@@ -122,15 +131,15 @@ impl Kind for SendableChooser {
                 path.push("selected");
                 return Write::one(Entry {
                     path,
-                    value: Value::String(text.into()),
+                    value: network_tables::Value::String(text.into()),
                 });
             }
         }
         Write::default()
     }
 
-    fn update_nt(&mut self, nt: &Node<Key, Value>) {
-        let Ok(value) = SendableChooser::try_from(nt) else {
+    fn update_nt(&mut self, key: &Key, value: &Value) {
+        let Ok(value) = SendableChooser::try_from(value) else {
             todo!();
         };
         self.options = value.options;
@@ -160,8 +169,11 @@ impl Kind for SendableChooser {
 pub struct Builder;
 
 impl widget::Builder for Builder {
-    fn create_kind(&self, nt: &Node<Key, Value>) -> Option<Box<dyn Kind>> {
-        let widget = SendableChooser::try_from(nt).ok()?;
-        Some(Box::new(widget))
+    fn create_kind(&self, nt: &Node) -> BuildResult {
+        let widget = SendableChooser::try_from(&nt.value);
+        match widget {
+            Ok(widget) => BuildResult::Complete(Box::new(widget)),
+            Err(error) => BuildResult::Partial(error.into()),
+        }
     }
 }
