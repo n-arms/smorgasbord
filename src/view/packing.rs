@@ -57,7 +57,12 @@ impl StatefulWidget for View<'_> {
                 [position.x + widget.size().width - 1];
             let rect = start.union(end);
 
-            let mut state = if *position == state.cursor {
+            let in_cursor = state.cursor.x >= position.x
+                && state.cursor.x < position.x + widget.size().width
+                && state.cursor.y >= position.y
+                && state.cursor.y < position.y + widget.size().height;
+
+            let mut state = if in_cursor {
                 if state.selected {
                     widgets::State::Selected
                 } else {
