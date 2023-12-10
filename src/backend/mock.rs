@@ -1,8 +1,10 @@
 use super::{Backend, Entry, Key, Path, Status, Update, Write};
 use network_tables::rmpv::Integer;
 use network_tables::Value;
-use std::collections::HashMap;
 use std::fmt::Debug;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+use std::{collections::HashMap, sync::atomic::AtomicU64};
 use tracing::{event, Level};
 
 pub type T = Box<dyn Tree>;
@@ -60,13 +62,7 @@ impl Tree for HashMap<Key, Box<dyn Tree>> {
     }
 
     fn write(&mut self, mut path: Vec<Key>, value: Value) {
-        event!(
-            Level::INFO,
-            "writing {} to {:?} with path {:?}",
-            value,
-            self,
-            path
-        );
+        event!(Level::INFO, "writing {} with path {:?}", value, path);
         if path.is_empty() {
             panic!("trying to write to folder {:?}", self);
         } else {
@@ -87,27 +83,50 @@ impl Tree for HashMap<Key, Box<dyn Tree>> {
     }
 }
 
+static START: Mutex<Option<Instant>> = Mutex::new(None);
+
 impl Tree for Value {
     fn update(&mut self, path: Path) -> Update {
-        match self {
+        let mut start = START.lock().unwrap();
+
+        let is_old = if let Some(start_time) = start.as_ref() {
+            start_time.elapsed().as_millis() > 5000
+        } else {
+            *start = Some(Instant::now());
+            false
+        };
+
+        let print = match self {
             Value::Integer(value) => {
                 *value = Integer::from(value.as_i64().unwrap() + 1);
+                false
             }
             Value::F32(value) => {
                 *value += 1.0;
+                false
             }
             Value::F64(value) => {
                 *value += 1.0;
+                false
             }
-            _ => {}
-        }
+            Value::String(..) => true,
+            _ => false,
+        };
         let entry = Entry {
             path,
             value: self.clone(),
         };
-        Update {
-            to_update: Vec::new(),
-            to_create: vec![entry],
+
+        if is_old {
+            Update {
+                to_update: vec![entry],
+                to_create: Vec::new(),
+            }
+        } else {
+            Update {
+                to_update: Vec::new(),
+                to_create: vec![entry],
+            }
         }
     }
 

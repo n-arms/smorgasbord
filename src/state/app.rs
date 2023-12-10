@@ -112,8 +112,12 @@ impl<B: Backend> App<B> {
             to_create,
         } = self.network_table.update();
 
-        for entry in to_update.into_iter().chain(to_create) {
+        for entry in to_update {
             self.widget_tree.update_entry(&entry)?;
+        }
+
+        for entry in to_create {
+            self.widget_tree.create_entry(&entry)?;
         }
 
         let all_widgets = self.widget_tree.widgets();

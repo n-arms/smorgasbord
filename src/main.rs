@@ -24,6 +24,7 @@ use std::{collections::HashMap, fs};
 use anyhow::Result;
 use backend::mock::{TMap, Tree, T};
 use backend::nt::Nt;
+use backend::{Entry, Path};
 use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},

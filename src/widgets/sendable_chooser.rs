@@ -144,6 +144,7 @@ impl Kind for SendableChooser {
         };
         self.options = value.options;
         self.default = value.default;
+        self.active = value.active;
     }
 
     fn reset(&mut self) {

@@ -1,5 +1,8 @@
 use core::fmt;
-use std::path::{Component, PathBuf};
+use std::{
+    collections::HashSet,
+    path::{Component, PathBuf},
+};
 
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
@@ -13,11 +16,13 @@ use super::{
 };
 use anyhow::Result;
 
+#[allow(dead_code)]
 pub struct Nt {
     read_receiver: UnboundedReceiver<Entry>,
     write_sender: UnboundedSender<Entry>,
-    pub status: Status,
+    status: Status,
     status_receiver: UnboundedReceiver<StatusUpdate>,
+    paths: HashSet<Path>,
 }
 
 enum UpdateAction {
@@ -73,6 +78,7 @@ impl Nt {
             write_sender,
             status: Status::default(),
             status_receiver,
+            paths: HashSet::new(),
         }
     }
 
@@ -80,7 +86,12 @@ impl Nt {
         let Ok(Entry { path, value }) = self.read_receiver.try_recv() else {
             return UpdateAction::End;
         };
-        UpdateAction::Create(Entry { path, value })
+        if self.paths.contains(&path) {
+            UpdateAction::Update(Entry { path, value })
+        } else {
+            self.paths.insert(path.clone());
+            UpdateAction::Create(Entry { path, value })
+        }
     }
 
     fn update_status(&mut self) {
