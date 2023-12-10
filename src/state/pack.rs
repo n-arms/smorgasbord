@@ -24,7 +24,7 @@ pub struct Packer {
 // It then continues to the next row. This algorithm isn't necessarily optimal,
 // but it is Good Enough™
 impl Packer {
-    pub fn new(big: Size, small: Vec<Size>) -> Self {
+    pub fn new(big: Size, small: &[Size]) -> Self {
         let mut small: Vec<_> = small
             .iter()
             .copied()

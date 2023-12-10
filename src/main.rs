@@ -1,18 +1,34 @@
-mod nt;
-mod nt_worker;
+#![allow(clippy::module_inception)]
+#![warn(clippy::pedantic)]
+
+macro_rules! map(
+    { $($key:expr => $value:expr),+ } => {
+        {
+            let mut m = ::std::collections::HashMap::new();
+            $(
+                m.insert($key, $value);
+            )+
+            m
+        }
+     };
+);
+
+mod backend;
 mod state;
 mod view;
 mod widget_tree;
 mod widgets;
 
-use std::fs;
+use std::{collections::HashMap, fs};
 
 use anyhow::Result;
+use backend::mock::{TMap, Tree, T};
+use backend::nt::Nt;
 use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use nt::Backend;
+use network_tables::Value;
 use ratatui::prelude::{CrosstermBackend, Terminal};
 use state::App;
 use tracing::{event, Level};
@@ -37,23 +53,45 @@ fn shutdown() -> Result<()> {
     Ok(())
 }
 
-async fn run() -> Result<()> {
+fn run() -> Result<()> {
     // ratatui terminal
     let mut t = Terminal::new(CrosstermBackend::new(std::io::stderr()))?;
 
-    let network_table = Backend::new().await;
+    //let network_table = Nt::new();
+    let auto_type: T = Box::new(Value::String("String Chooser".into()));
+    let auto_options: T = Box::new(Value::Array(vec![
+        Value::String("Left".into()),
+        Value::String("Right".into()),
+    ]));
+    let auto_selected: T = Box::new(Value::String("Left".into()));
+    let auto_default: T = Box::new(Value::String("Left".into()));
+    let auto: T = Box::new(map! {
+        ".type".into() => auto_type,
+        "options".into() => auto_options,
+        "selected".into() => auto_selected,
+        "default".into() => auto_default
+    });
+    let counter: T = Box::new(Value::F32(0.0));
+    let smartdashboard: T = Box::new(map! {
+        "counter".into() => counter,
+        "auto".into() => auto
+    });
+    let network_table: TMap = map! {
+        "Smartdashboard".into() => smartdashboard
+    };
+
     // application state
     let mut app = App::new(network_table);
     t.draw(|f| app.render(f))?;
     loop {
-        match app.update().await {
+        match app.update() {
             Ok(result) => {
                 if result {
                     break;
                 }
             }
             Err(error) => {
-                event!(Level::ERROR, "top level error {}", error)
+                event!(Level::ERROR, "top level error {}", error);
             }
         }
         t.draw(|f| app.render(f))?;
@@ -67,7 +105,7 @@ async fn main() -> Result<()> {
     // setup terminal
     startup()?;
 
-    let result = run().await;
+    let result = run();
 
     // teardown terminal before unwrapping Result of app run
     shutdown()?;

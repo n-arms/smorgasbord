@@ -6,12 +6,12 @@ use ratatui::{
 };
 
 use crate::{
-    nt::Path,
+    backend::Path,
     state::packing::GridPosition,
     widgets::{self, Size, Widget},
 };
 
-pub struct PackingView<'a> {
+pub struct View<'a> {
     pub size: Size,
     pub widgets: &'a HashMap<GridPosition, Widget>,
     pub titles: &'a HashMap<Path, GridPosition>,
@@ -22,7 +22,7 @@ pub struct State {
     pub selected: bool,
 }
 
-impl StatefulWidget for PackingView<'_> {
+impl StatefulWidget for View<'_> {
     type State = State;
 
     fn render(
@@ -32,13 +32,14 @@ impl StatefulWidget for PackingView<'_> {
         state: &mut Self::State,
     ) {
         let rows_constraints =
-            vec![Constraint::Ratio(1, self.size.height as u32); self.size.height];
+            vec![Constraint::Ratio(1, u32::try_from(self.size.height).unwrap()); self.size.height];
         let rows_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints(rows_constraints)
             .split(area);
 
-        let row_constraints = vec![Constraint::Ratio(1, self.size.width as u32); self.size.width];
+        let row_constraints =
+            vec![Constraint::Ratio(1, u32::try_from(self.size.width).unwrap()); self.size.width];
 
         let row_layouts: Vec<Rc<[Rect]>> = rows_layout
             .iter()

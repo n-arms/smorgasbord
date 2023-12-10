@@ -7,7 +7,7 @@ use ratatui::{
 use std::fmt::Debug;
 
 use crate::{
-    nt::{Key, Path, Write},
+    backend::{Key, Path, Write},
     widget_tree::Value,
 };
 
@@ -103,7 +103,7 @@ impl Widget {
     }
 
     pub fn update_nt(&mut self, key: &Key, value: &Value) {
-        self.value.update_nt(key, value)
+        self.value.update_nt(key, value);
     }
 
     pub fn is_finished(&self) -> bool {

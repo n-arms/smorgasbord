@@ -5,12 +5,12 @@ use ratatui::{
     Frame,
 };
 
-use crate::state::App;
-use crate::{nt::Status, state::app::State};
+use crate::{backend::Backend, state::App};
+use crate::{backend::Status, state::app::State};
 
 use super::packing;
 
-impl App {
+impl<B: Backend> App<B> {
     pub fn render(&self, f: &mut Frame<'_>) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -47,7 +47,7 @@ impl App {
                 let width = area.width.max(3) - 3;
                 let scroll = edit.text_field.visual_scroll(width as usize);
                 let input = Paragraph::new(edit.text_field.value())
-                    .scroll((0, scroll as u16))
+                    .scroll((0, u16::try_from(scroll).unwrap()))
                     .block(
                         Block::default()
                             .borders(Borders::ALL)
@@ -70,11 +70,11 @@ impl App {
 
         let title = Paragraph::new("Smorgasbord");
 
-        let status = self.network_table.status;
+        let status = self.network_table.status();
 
         title_block.render(area, buf);
         title.render(layout[0], buf);
-        status.render(layout[1], buf)
+        status.render(layout[1], buf);
     }
 }
 

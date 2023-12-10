@@ -16,7 +16,7 @@ impl NTValue for Value {
 
     fn try_to_string_array(&self) -> Option<Vec<String>> {
         if let Value::Array(array) = self {
-            array.iter().map(|value| value.try_to_string()).collect()
+            array.iter().map(NTValue::try_to_string).collect()
         } else {
             None
         }

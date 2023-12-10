@@ -16,7 +16,8 @@ use tokio::{
 use anyhow::Result;
 use tracing::{event, Level};
 
-use crate::nt::{from_nt_path, Entry, Path, StatusUpdate};
+use super::nt::from_nt_path;
+use super::{Entry, Path, StatusUpdate};
 
 pub struct Worker {
     read_sender: UnboundedSender<Entry>,
@@ -33,21 +34,20 @@ pub struct SubscribedClient {
 
 impl SubscribedClient {
     async fn write(&mut self, entry: Entry) -> Result<()> {
-        let topic = match self.published_topics.get(&entry.path) {
-            Some(topic) => topic,
-            None => {
-                let topic = self
-                    .client
-                    .publish_topic(
-                        entry.path.to_string(),
-                        value_type(entry.value.as_ref()),
-                        None,
-                    )
-                    .await?;
-                self.published_topics
-                    .entry(entry.path.clone())
-                    .or_insert(topic)
-            }
+        let topic = if let Some(topic) = self.published_topics.get(&entry.path) {
+            topic
+        } else {
+            let topic = self
+                .client
+                .publish_topic(
+                    entry.path.to_string(),
+                    value_type(entry.value.as_ref()),
+                    None,
+                )
+                .await?;
+            self.published_topics
+                .entry(entry.path.clone())
+                .or_insert(topic)
         };
         event!(
             Level::INFO,
@@ -108,12 +108,12 @@ impl Worker {
             select! {
                 to_write = self.write_receiver.recv() => {
                     if let Some(entry) = to_write {
-                        self.client.write(entry).await.unwrap()
+                        self.client.write(entry).await.unwrap();
                     }
                 },
                 to_read = self.client.read() => {
                     if let Ok(entry) = to_read {
-                        self.read_sender.send(entry).unwrap()
+                        self.read_sender.send(entry).unwrap();
                     }
                 }
             }
@@ -151,11 +151,10 @@ async fn subscribe(client: &Client) -> Subscription {
         .unwrap()
 }
 
-fn value_type(value: ValueRef<'_>) -> Type {
+pub fn value_type(value: ValueRef<'_>) -> Type {
     match value {
-        ValueRef::Nil => Type::Int,
         ValueRef::Boolean(_) => Type::Boolean,
-        ValueRef::Integer(_) => Type::Int,
+        ValueRef::Integer(_) | ValueRef::Nil => Type::Int,
         ValueRef::F32(_) => Type::Float,
         ValueRef::F64(_) => Type::Double,
         ValueRef::String(_) => Type::String,

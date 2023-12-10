@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    nt::Path,
-    view::packing::PackingView,
+    backend::Path,
+    view::packing,
     widgets::{Size, Widget},
 };
 
@@ -68,8 +68,8 @@ impl Packing {
         self.widgets.get_mut(&position)
     }
 
-    pub fn widget(&self) -> PackingView {
-        PackingView {
+    pub fn widget(&self) -> packing::View {
+        packing::View {
             size: self.size,
             widgets: &self.widgets,
             titles: &self.titles,

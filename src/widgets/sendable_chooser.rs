@@ -5,7 +5,7 @@ use ratatui::{
 };
 
 use crate::{
-    nt::{Entry, Key, Path, Write},
+    backend::{Entry, Key, Path, Write},
     widget_tree::Value,
 };
 
@@ -173,6 +173,7 @@ impl widget::Builder for Builder {
         let widget = SendableChooser::try_from(value);
         match widget {
             Ok(widget) => BuildResult::Complete(Box::new(widget)),
+            Err(Error::WantedNodes) => BuildResult::None,
             Err(error) => BuildResult::Partial(error.into()),
         }
     }

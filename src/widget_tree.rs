@@ -1,5 +1,5 @@
 use crate::{
-    nt::{Entry, Key, Path},
+    backend::{Entry, Key, Path},
     widgets::Widget,
     widgets::{self, BuildResult, Builder},
 };
@@ -30,13 +30,16 @@ pub struct Node {
 
 impl Node {
     pub fn new<'a>(
+        mut path: Vec<Key>,
         first: &Key,
         rest: impl Iterator<Item = &'a Key>,
         value: &network_tables::Value,
         builders: &[Box<dyn widgets::Builder>],
     ) -> Self {
-        let value_node = Value::new(rest, value, builders);
+        path.push(first.clone());
+        let value_node = Value::new(path.clone(), rest, value, builders);
         let (partial_widgets, widgets) = Self::run_builders(
+            path,
             first,
             &value_node,
             builders.iter().map(|builder| builder.as_ref()),
@@ -50,26 +53,30 @@ impl Node {
     }
     fn update_entry<'a>(
         &mut self,
+        mut path: Vec<Key>,
         rest: impl Iterator<Item = &'a Key>,
         value: &network_tables::Value,
         builders: &[Box<dyn widgets::Builder>],
     ) -> Result<()> {
-        self.value.update_entry(rest, value, builders)?;
+        path.push(self.key.clone());
+        self.value
+            .update_entry(path.clone(), rest, value, builders)?;
         for widget in &mut self.widgets {
             widget.update_nt(&self.key, &self.value);
         }
         for builder_index in &self.partial_widgets {
             let builder = &builders[builder_index.index];
             match builder.create_kind(&self.key, &self.value) {
-                BuildResult::Complete(kind) => self.widgets.push(Widget::new(
-                    Path {
-                        first: self.key.clone(),
-                        rest: Vec::new(),
-                    },
-                    kind,
-                )),
+                BuildResult::Complete(kind) => self
+                    .widgets
+                    .push(Widget::new(Path::try_from(path.clone()).unwrap(), kind)),
                 BuildResult::Partial(error) => {
-                    event!(Level::WARN, "partial widget created with error {:?}", error)
+                    event!(
+                        Level::WARN,
+                        "partial widget created at path {:?} with error {:?}",
+                        self.key,
+                        error
+                    );
                 }
                 BuildResult::None => {}
             }
@@ -77,20 +84,19 @@ impl Node {
         Ok(())
     }
     fn run_builders<'a>(
+        mut path: Vec<Key>,
         key: &Key,
         value: &Value,
         builders: impl Iterator<Item = &'a dyn Builder>,
     ) -> (Vec<BuilderIndex>, Vec<Widget>) {
+        path.push(key.clone());
         let mut partials = Vec::new();
         let mut widgets = Vec::new();
         for (i, builder) in builders.enumerate() {
             match builder.create_kind(key, value) {
                 BuildResult::Complete(kind) => {
-                    let fake_title = Path {
-                        first: key.clone(),
-                        rest: Vec::new(),
-                    };
-                    widgets.push(Widget::new(fake_title, kind));
+                    let title = Path::try_from(path.clone()).unwrap();
+                    widgets.push(Widget::new(title, kind));
                 }
                 BuildResult::Partial(_) => partials.push(BuilderIndex { index: i }),
                 BuildResult::None => {}
@@ -115,13 +121,14 @@ pub enum Value {
 
 impl Value {
     pub fn new<'a>(
+        path: Vec<Key>,
         mut keys: impl Iterator<Item = &'a Key>,
         value: &network_tables::Value,
         builders: &[Box<dyn widgets::Builder>],
     ) -> Self {
         if let Some(first) = keys.next() {
             Self::Branch(Nodes {
-                nodes: vec![Node::new(first, keys, value, builders)],
+                nodes: vec![Node::new(path, first, keys, value, builders)],
             })
         } else {
             Self::Leaf(value.clone())
@@ -129,6 +136,7 @@ impl Value {
     }
     fn update_entry<'a>(
         &mut self,
+        path: Vec<Key>,
         mut keys: impl Iterator<Item = &'a Key>,
         value: &network_tables::Value,
         builders: &[Box<dyn widgets::Builder>],
@@ -139,7 +147,9 @@ impl Value {
                 *old_value = value.clone();
                 Ok(())
             }
-            (Value::Branch(nodes), Some(first)) => nodes.update_entry(first, keys, value, builders),
+            (Value::Branch(nodes), Some(first)) => {
+                nodes.update_entry(path, first, keys, value, builders)
+            }
             (Value::Branch(_), None) => Err(Error::ExpectedBranch.into()),
         }
     }
@@ -166,6 +176,7 @@ pub struct Nodes {
 impl Nodes {
     fn update_entry<'a>(
         &mut self,
+        path: Vec<Key>,
         first: &Key,
         rest: impl Iterator<Item = &'a Key>,
         value: &network_tables::Value,
@@ -173,10 +184,11 @@ impl Nodes {
     ) -> Result<()> {
         for node in &mut self.nodes {
             if &node.key == first {
-                return node.update_entry(rest, value, builders);
+                return node.update_entry(path, rest, value, builders);
             }
         }
-        self.nodes.push(Node::new(first, rest, value, builders));
+        self.nodes
+            .push(Node::new(path, first, rest, value, builders));
         Ok(())
     }
 
@@ -205,8 +217,9 @@ impl Tree {
         }
     }
 
-    pub fn update_entry(&mut self, entry: Entry) -> Result<()> {
+    pub fn update_entry(&mut self, entry: &Entry) -> Result<()> {
         self.nodes.update_entry(
+            Vec::new(),
             &entry.path.first,
             entry.path.rest.iter(),
             &entry.value,

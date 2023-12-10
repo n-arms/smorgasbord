@@ -3,7 +3,7 @@ use crossterm::event::KeyCode;
 use crossterm::event::{self, Event::Key, KeyCode::Char};
 use std::time::Duration;
 
-use crate::nt::{Backend, Update};
+use crate::backend::{Backend, Update};
 use crate::state::packing::GridPosition;
 use crate::widget_tree::Tree;
 use crate::widgets::{self, sendable_chooser, simple, Size};
@@ -13,9 +13,9 @@ use tui_input::{Input, InputRequest};
 
 use super::packing::Packing;
 
-pub struct App {
+pub struct App<B> {
     pub packing: Packing,
-    pub network_table: Backend,
+    pub network_table: B,
     pub widget_tree: Tree,
     pub cursor: GridPosition,
     pub state: State,
@@ -40,8 +40,8 @@ pub enum Error {
     RunawayWidget { position: GridPosition },
 }
 
-impl App {
-    pub async fn update(&mut self) -> Result<bool> {
+impl<B: Backend> App<B> {
+    pub fn update(&mut self) -> Result<bool> {
         self.check_health()?;
         if event::poll(Duration::from_millis(250))? {
             if let Key(key) = event::read()? {
@@ -113,7 +113,7 @@ impl App {
         } = self.network_table.update();
 
         for entry in to_update.into_iter().chain(to_create) {
-            self.widget_tree.update_entry(entry)?;
+            self.widget_tree.update_entry(&entry)?;
         }
 
         let all_widgets = self.widget_tree.widgets();
@@ -154,7 +154,7 @@ impl App {
         Ok(())
     }
 
-    pub fn new(network_table: Backend) -> App {
+    pub fn new(network_table: B) -> Self {
         let builders: Vec<Box<dyn widgets::Builder>> = vec![
             Box::new(simple::Builder),
             Box::new(sendable_chooser::Builder),
