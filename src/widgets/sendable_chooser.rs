@@ -6,7 +6,7 @@ use ratatui::{
 
 use crate::{
     nt::{Entry, Key, Path, Write},
-    widget_tree::{Node, Value},
+    widget_tree::Value,
 };
 
 use super::{
@@ -138,7 +138,7 @@ impl Kind for SendableChooser {
         Write::default()
     }
 
-    fn update_nt(&mut self, key: &Key, value: &Value) {
+    fn update_nt(&mut self, _key: &Key, value: &Value) {
         let Ok(value) = SendableChooser::try_from(value) else {
             todo!();
         };
@@ -169,7 +169,7 @@ impl Kind for SendableChooser {
 pub struct Builder;
 
 impl widget::Builder for Builder {
-    fn create_kind(&self, key: &Key, value: &Value) -> BuildResult {
+    fn create_kind(&self, _key: &Key, value: &Value) -> BuildResult {
         let widget = SendableChooser::try_from(value);
         match widget {
             Ok(widget) => BuildResult::Complete(Box::new(widget)),

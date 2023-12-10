@@ -4,17 +4,13 @@ use crossterm::event::{self, Event::Key, KeyCode::Char};
 use std::time::Duration;
 
 use crate::nt::{Backend, Update};
-use crate::state::{
-    grid::{GridPosition, ManagedGrid},
-    widget_manager::WidgetManager,
-};
+use crate::state::packing::GridPosition;
 use crate::widget_tree::Tree;
 use crate::widgets::{self, sendable_chooser, simple, Size};
 
 use thiserror::Error;
 use tui_input::{Input, InputRequest};
 
-use super::pack::Packer;
 use super::packing::Packing;
 
 pub struct App {

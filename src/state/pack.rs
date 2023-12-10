@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use crate::widgets::Size;
 
-use super::grid::GridPosition;
+use super::packing::GridPosition;
 
 #[derive(Copy, Clone, Debug)]
 struct Rect {

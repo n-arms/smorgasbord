@@ -8,7 +8,7 @@ use std::fmt::Debug;
 
 use crate::{
     nt::{Key, Path, Write},
-    widget_tree::{Node, Value},
+    widget_tree::Value,
 };
 
 #[derive(Debug)]

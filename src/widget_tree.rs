@@ -1,6 +1,5 @@
 use crate::{
-    nt::{Entry, Key},
-    trie::Keys,
+    nt::{Entry, Key, Path},
     widgets::Widget,
     widgets::{self, BuildResult, Builder},
 };
@@ -55,17 +54,15 @@ impl Node {
         value: &network_tables::Value,
         builders: &[Box<dyn widgets::Builder>],
     ) -> Result<()> {
-        if let Err(error) = self.value.update_entry(rest, value, builders) {
-            return Err(error);
-        }
+        self.value.update_entry(rest, value, builders)?;
         for widget in &mut self.widgets {
-            widget.update_nt(&mut self.key, &mut self.value);
+            widget.update_nt(&self.key, &self.value);
         }
         for builder_index in &self.partial_widgets {
             let builder = &builders[builder_index.index];
             match builder.create_kind(&self.key, &self.value) {
                 BuildResult::Complete(kind) => self.widgets.push(Widget::new(
-                    Keys {
+                    Path {
                         first: self.key.clone(),
                         rest: Vec::new(),
                     },
@@ -89,13 +86,13 @@ impl Node {
         for (i, builder) in builders.enumerate() {
             match builder.create_kind(key, value) {
                 BuildResult::Complete(kind) => {
-                    let fake_title = Keys {
+                    let fake_title = Path {
                         first: key.clone(),
                         rest: Vec::new(),
                     };
                     widgets.push(Widget::new(fake_title, kind));
                 }
-                BuildResult::Partial(error) => partials.push(BuilderIndex { index: i }),
+                BuildResult::Partial(_) => partials.push(BuilderIndex { index: i }),
                 BuildResult::None => {}
             }
         }
@@ -137,13 +134,13 @@ impl Value {
         builders: &[Box<dyn widgets::Builder>],
     ) -> Result<()> {
         match (self, keys.next()) {
-            (Value::Leaf(value), Some(rest)) => Err(Error::ExpectedValue.into()),
+            (Value::Leaf(_), Some(_)) => Err(Error::ExpectedValue.into()),
             (Value::Leaf(old_value), None) => {
                 *old_value = value.clone();
                 Ok(())
             }
             (Value::Branch(nodes), Some(first)) => nodes.update_entry(first, keys, value, builders),
-            (Value::Branch(nodes), None) => Err(Error::ExpectedBranch.into()),
+            (Value::Branch(_), None) => Err(Error::ExpectedBranch.into()),
         }
     }
 

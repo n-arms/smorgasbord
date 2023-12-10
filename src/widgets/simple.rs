@@ -5,7 +5,7 @@ use ratatui::{
 
 use crate::{
     nt::{Key, Path, Write},
-    widget_tree::{Node, Value},
+    widget_tree::Value,
 };
 
 use super::{

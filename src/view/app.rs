@@ -1,13 +1,11 @@
 use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    widgets::{Block, Borders, Paragraph, StatefulWidget, Widget as UIWidget},
+    widgets::{Block, Borders, Paragraph, Widget as UIWidget},
     Frame,
 };
 
 use crate::state::App;
-use crate::view::table::Table;
-use crate::widgets;
 use crate::{nt::Status, state::app::State};
 
 use super::packing;

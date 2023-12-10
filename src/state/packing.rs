@@ -6,7 +6,11 @@ use crate::{
     widgets::{Size, Widget},
 };
 
-use super::grid::GridPosition;
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GridPosition {
+    pub x: usize,
+    pub y: usize,
+}
 
 pub struct Packing {
     pub size: Size,
@@ -64,7 +68,7 @@ impl Packing {
         self.widgets.get_mut(&position)
     }
 
-    pub fn widget<'a>(&'a self) -> PackingView<'a> {
+    pub fn widget(&self) -> PackingView {
         PackingView {
             size: self.size,
             widgets: &self.widgets,

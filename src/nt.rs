@@ -7,13 +7,22 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use network_tables::Value;
 use tracing::{event, Level};
 
-use crate::{
-    nt_worker::Worker,
-    trie::{Keys, Trie},
-};
+use crate::nt_worker::Worker;
 use anyhow::Result;
 
-pub type Path = Keys<Key, Vec<Key>>;
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Path {
+    pub first: Key,
+    pub rest: Vec<Key>,
+}
+
+impl Path {
+    pub fn push(&mut self, arg: impl Into<Key>) {
+        self.rest.push(arg.into());
+    }
+}
+
+//pub type Path = Keys<Key, Vec<Key>>;
 
 #[derive(Copy, Clone, Default)]
 pub struct Status {
@@ -33,7 +42,6 @@ pub enum StatusUpdate {
 }
 
 pub struct Backend {
-    pub trie: Trie<Key, Value>,
     read_receiver: UnboundedReceiver<Entry>,
     write_sender: UnboundedSender<Entry>,
     pub status: Status,
@@ -82,7 +90,6 @@ impl Backend {
         });
 
         Self {
-            trie: Trie::new(),
             read_receiver,
             write_sender,
             status: Status::default(),
@@ -113,7 +120,7 @@ impl Backend {
         let Ok(Entry { path, value }) = self.read_receiver.try_recv() else {
             return UpdateAction::End;
         };
-        let result = self.trie.insert(path.clone(), value.clone()).unwrap(); // TODO
+        let result: Option<()> = None;
         match result {
             Some(_) => UpdateAction::Update(Entry { path, value }),
             None => UpdateAction::Create(Entry { path, value }),
@@ -146,7 +153,7 @@ pub enum KeyError {
     Empty,
 }
 
-pub fn from_nt_path(path: String) -> Result<Keys<Key, Vec<Key>>, KeyError> {
+pub fn from_nt_path(path: String) -> Result<Path, KeyError> {
     let buf = PathBuf::from(path);
     let mut vec: Vec<String> = buf
         .components()
@@ -162,7 +169,7 @@ pub fn from_nt_path(path: String) -> Result<Keys<Key, Vec<Key>>, KeyError> {
         return Err(KeyError::Empty);
     }
     let first = vec.remove(0);
-    Ok(Keys { first, rest: vec })
+    Ok(Path { first, rest: vec })
 }
 
 impl fmt::Display for Path {

@@ -1,10 +1,6 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-
 mod nt;
 mod nt_worker;
 mod state;
-mod trie;
 mod view;
 mod widget_tree;
 mod widgets;

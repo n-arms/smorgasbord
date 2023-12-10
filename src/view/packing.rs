@@ -7,7 +7,7 @@ use ratatui::{
 
 use crate::{
     nt::Path,
-    state::grid::GridPosition,
+    state::packing::GridPosition,
     widgets::{self, Size, Widget},
 };
 
