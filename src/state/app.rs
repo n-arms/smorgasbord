@@ -162,7 +162,7 @@ impl<B: Backend> App<B> {
         let widget_tree = Tree::new(builders);
         Self {
             packing: Packing::new(Size {
-                width: 4,
+                width: 5,
                 height: 2,
             }),
             network_table,

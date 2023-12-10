@@ -18,7 +18,7 @@ pub enum Error {
 
 #[derive(Copy, Clone, Debug)]
 pub struct BuilderIndex {
-    index: usize,
+    pub index: usize,
 }
 
 pub struct Node {
@@ -29,6 +29,7 @@ pub struct Node {
 }
 
 impl Node {
+    /// path is the path to the node, not including .key
     pub fn new<'a>(
         mut path: Vec<Key>,
         first: &Key,
@@ -42,7 +43,8 @@ impl Node {
             path,
             first,
             &value_node,
-            builders.iter().map(|builder| builder.as_ref()),
+            builders,
+            (0..builders.len()).map(|index| BuilderIndex { index }),
         );
         Self {
             key: first.clone(),
@@ -51,6 +53,7 @@ impl Node {
             value: value_node,
         }
     }
+    /// path is the path to the node, not including .key
     fn update_entry<'a>(
         &mut self,
         mut path: Vec<Key>,
@@ -64,6 +67,20 @@ impl Node {
         for widget in &mut self.widgets {
             widget.update_nt(&self.key, &self.value);
         }
+        let (partials, widgets) = Self::run_builders(
+            path,
+            &self.key,
+            &self.value,
+            builders,
+            self.partial_widgets.iter().copied(),
+        );
+        self.partial_widgets = partials;
+        self.widgets = widgets;
+
+        if !self.widgets.is_empty() {
+            self.value.strip_widgets();
+        }
+        /*
         for builder_index in &self.partial_widgets {
             let builder = &builders[builder_index.index];
             match builder.create_kind(&self.key, &self.value) {
@@ -81,28 +98,36 @@ impl Node {
                 BuildResult::None => {}
             }
         }
+            */
         Ok(())
     }
     fn run_builders<'a>(
-        mut path: Vec<Key>,
+        path: Vec<Key>,
         key: &Key,
         value: &Value,
-        builders: impl Iterator<Item = &'a dyn Builder>,
+        builders: &[Box<dyn Builder>],
+        indices: impl Iterator<Item = BuilderIndex>,
     ) -> (Vec<BuilderIndex>, Vec<Widget>) {
-        path.push(key.clone());
         let mut partials = Vec::new();
         let mut widgets = Vec::new();
-        for (i, builder) in builders.enumerate() {
+        for index in indices {
+            let builder = builders[index.index].as_ref();
             match builder.create_kind(key, value) {
                 BuildResult::Complete(kind) => {
                     let title = Path::try_from(path.clone()).unwrap();
                     widgets.push(Widget::new(title, kind));
                 }
-                BuildResult::Partial(_) => partials.push(BuilderIndex { index: i }),
-                BuildResult::None => {}
+                BuildResult::Partial(_) => partials.push(index),
+                BuildResult::None => {
+                    partials.push(index);
+                }
             }
         }
         (partials, widgets)
+    }
+    fn strip_widgets(&mut self) {
+        self.widgets.clear();
+        self.value.strip_widgets();
     }
     fn widgets<'a>(&'a self, widgets: &mut Vec<&'a Widget>) {
         widgets.extend(self.widgets.iter());
@@ -165,6 +190,17 @@ impl Value {
         match self {
             Value::Leaf(leaf) => Some(leaf.clone()),
             Value::Branch(_) => None,
+        }
+    }
+
+    fn strip_widgets(&mut self) {
+        match self {
+            Value::Leaf(_) => {}
+            Value::Branch(nodes) => {
+                for node in &mut nodes.nodes {
+                    node.strip_widgets();
+                }
+            }
         }
     }
 }
