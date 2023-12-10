@@ -16,7 +16,7 @@ impl<B: Backend> App<B> {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(3),
-                Constraint::Min(5),
+                Constraint::Min(3 * self.packing.size.height as u16),
                 Constraint::Length(5),
             ])
             .split(f.size());

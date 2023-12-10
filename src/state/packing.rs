@@ -65,7 +65,22 @@ impl Packing {
     }
 
     pub fn get_mut_widget(&mut self, position: GridPosition) -> Option<&mut Widget> {
-        self.widgets.get_mut(&position)
+        let mut pos = None;
+        'find: for row in (0..=position.y).rev() {
+            for col in (0..=position.x).rev() {
+                let current = GridPosition { x: col, y: row };
+                let widget = self.widgets.get_mut(&current);
+                if widget.is_some() {
+                    let size = widget.unwrap().size();
+                    if row + size.height > position.y && col + size.width > position.x {
+                        pos = Some(current);
+                        break 'find;
+                    }
+                }
+            }
+        }
+        let pos = pos?;
+        self.widgets.get_mut(&pos)
     }
 
     pub fn widget(&self) -> packing::View {

@@ -73,10 +73,21 @@ fn run() -> Result<()> {
         "default".into() => auto_default
     });
     let counter: T = Box::new(Value::F32(0.0));
-    let smartdashboard: T = Box::new(map! {
+    let mut smartdashboard_map: TMap = map! {
         "counter".into() => counter,
         "auto".into() => auto
-    });
+    };
+    for name in [
+        "left encoder",
+        "right encoder",
+        "gyro yaw",
+        "through bore",
+        "kA",
+    ] {
+        let value: T = Box::new(Value::F32(0.0));
+        smartdashboard_map.insert(name.into(), value);
+    }
+    let smartdashboard: T = Box::new(smartdashboard_map);
     let network_table: TMap = map! {
         "Smartdashboard".into() => smartdashboard
     };
