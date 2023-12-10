@@ -48,7 +48,7 @@ pub enum BuildResult {
 }
 
 pub trait Builder {
-    fn create_kind(&self, nt: &Node) -> BuildResult;
+    fn create_kind(&self, key: &Key, value: &Value) -> BuildResult;
 }
 
 const UNHIGHLIGHTED_COLOR: Color = Color::White;
@@ -108,5 +108,9 @@ impl Widget {
 
     pub fn is_finished(&self) -> bool {
         self.value.is_finished()
+    }
+
+    pub fn size(&self) -> Size {
+        self.value.size()
     }
 }

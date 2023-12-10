@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::widgets::Size;
 
 use super::grid::GridPosition;

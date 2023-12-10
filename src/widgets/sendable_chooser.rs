@@ -169,8 +169,8 @@ impl Kind for SendableChooser {
 pub struct Builder;
 
 impl widget::Builder for Builder {
-    fn create_kind(&self, nt: &Node) -> BuildResult {
-        let widget = SendableChooser::try_from(&nt.value);
+    fn create_kind(&self, key: &Key, value: &Value) -> BuildResult {
+        let widget = SendableChooser::try_from(value);
         match widget {
             Ok(widget) => BuildResult::Complete(Box::new(widget)),
             Err(error) => BuildResult::Partial(error.into()),

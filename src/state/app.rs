@@ -8,15 +8,19 @@ use crate::state::{
     grid::{GridPosition, ManagedGrid},
     widget_manager::WidgetManager,
 };
-use crate::widgets::{sendable_chooser, simple};
+use crate::widget_tree::Tree;
+use crate::widgets::{self, sendable_chooser, simple, Size};
 
 use thiserror::Error;
 use tui_input::{Input, InputRequest};
 
+use super::pack::Packer;
+use super::packing::Packing;
+
 pub struct App {
-    pub grid: ManagedGrid,
+    pub packing: Packing,
     pub network_table: Backend,
-    pub widget_manager: WidgetManager,
+    pub widget_tree: Tree,
     pub cursor: GridPosition,
     pub state: State,
 }
@@ -53,13 +57,15 @@ impl App {
                                 self.cursor.x = self.cursor.x.saturating_sub(1);
                             }
                             KeyCode::Right => {
-                                self.cursor.x = (self.cursor.x + 1).min(self.grid.get_width() - 1);
+                                self.cursor.x =
+                                    (self.cursor.x + 1).min(self.packing.get_width() - 1);
                             }
                             KeyCode::Up => {
                                 self.cursor.y = self.cursor.y.saturating_sub(1);
                             }
                             KeyCode::Down => {
-                                self.cursor.y = (self.cursor.y + 1).min(self.grid.get_height() - 1);
+                                self.cursor.y =
+                                    (self.cursor.y + 1).min(self.packing.get_height() - 1);
                             }
                             KeyCode::Enter => {
                                 self.try_edit();
@@ -67,8 +73,11 @@ impl App {
                             _ => {}
                         },
                         State::Edit(edit) => {
-                            let Some(widget) = self.grid.get_mut_widget(&edit.editting) else {
-                                return Err(Error::RunawayWidget { position: edit.editting }.into());
+                            let Some(widget) = self.packing.get_mut_widget(edit.editting) else {
+                                return Err(Error::RunawayWidget {
+                                    position: edit.editting,
+                                }
+                                .into());
                             };
                             match key.code {
                                 KeyCode::Enter => {
@@ -102,16 +111,26 @@ impl App {
                 }
             }
         }
-        let Update { .. } = self.network_table.update();
-        let mut all_widgets = self.widget_manager.widgets(&self.network_table.trie);
-        all_widgets.retain(|widget| !self.grid.has_widget(widget));
-        self.grid.populate_from(all_widgets);
-        //self.grid.update_widgets(&self.network_table.trie);
+        let Update {
+            to_update,
+            to_create,
+        } = self.network_table.update();
+
+        for entry in to_update.into_iter().chain(to_create) {
+            self.widget_tree.update_entry(entry)?;
+        }
+
+        let all_widgets = self.widget_tree.widgets();
+
+        for widget in all_widgets {
+            self.packing.add(widget.clone());
+        }
+
         Ok(false)
     }
 
     fn try_edit(&mut self) {
-        if let Some(widget) = self.grid.get_mut_widget(&self.cursor) {
+        if let Some(widget) = self.packing.get_mut_widget(self.cursor) {
             widget.reset();
             self.state = State::Edit(Edit {
                 editting: self.cursor,
@@ -122,14 +141,14 @@ impl App {
     }
 
     fn check_health(&mut self) -> Result<()> {
-        if self.cursor.x >= self.grid.get_width() {
+        if self.cursor.x >= self.packing.get_width() {
             self.cursor = GridPosition::default();
             return Err(Error::InvalidCursor {
                 cursor: self.cursor,
             }
             .into());
         }
-        if self.cursor.y >= self.grid.get_height() {
+        if self.cursor.y >= self.packing.get_height() {
             self.cursor = GridPosition::default();
             return Err(Error::InvalidCursor {
                 cursor: self.cursor,
@@ -140,15 +159,20 @@ impl App {
     }
 
     pub fn new(network_table: Backend) -> App {
-        let widget_manager = WidgetManager::default()
-            .with(simple::Builder)
-            .with(sendable_chooser::Builder);
+        let builders: Vec<Box<dyn widgets::Builder>> = vec![
+            Box::new(simple::Builder),
+            Box::new(sendable_chooser::Builder),
+        ];
+        let widget_tree = Tree::new(builders);
         Self {
-            grid: ManagedGrid::new(4, 2),
+            packing: Packing::new(Size {
+                width: 4,
+                height: 2,
+            }),
             network_table,
             cursor: GridPosition::default(),
             state: State::View,
-            widget_manager,
+            widget_tree,
         }
     }
 }

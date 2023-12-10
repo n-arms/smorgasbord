@@ -59,12 +59,12 @@ impl Kind for Simple {
 pub struct Builder;
 
 impl widget::Builder for Builder {
-    fn create_kind(&self, nt: &Node) -> BuildResult {
-        let Value::Leaf(value) = &nt.value else {
+    fn create_kind(&self, key: &Key, value: &Value) -> BuildResult {
+        let Value::Leaf(value) = value else {
             return BuildResult::None;
         };
 
-        if nt.key.starts_with('.') {
+        if key.starts_with('.') {
             BuildResult::None
         } else {
             BuildResult::Complete(Box::new(Simple {

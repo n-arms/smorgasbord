@@ -1,7 +1,7 @@
 use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    widgets::{Block, Borders, Paragraph, Widget as UIWidget},
+    widgets::{Block, Borders, Paragraph, StatefulWidget, Widget as UIWidget},
     Frame,
 };
 
@@ -9,6 +9,8 @@ use crate::state::App;
 use crate::view::table::Table;
 use crate::widgets;
 use crate::{nt::Status, state::app::State};
+
+use super::packing;
 
 impl App {
     pub fn render(&self, f: &mut Frame<'_>) {
@@ -23,20 +25,17 @@ impl App {
 
         self.render_title(chunks[0], f.buffer_mut());
 
-        let cursor_state = match self.state {
-            State::View => widgets::State::Highlighted,
-            State::Edit(_) => widgets::State::Selected,
+        let mut cursor_state = packing::State {
+            selected: match self.state {
+                State::View => false,
+                State::Edit(_) => true,
+            },
+            cursor: self.cursor,
         };
 
-        let table = Table::new(
-            self.grid.get_widgets(),
-            self.grid.get_width(),
-            self.grid.get_height(),
-            self.cursor,
-            cursor_state,
-        );
+        let packing_view = self.packing.widget();
 
-        f.render_widget(table, chunks[1]);
+        f.render_stateful_widget(packing_view, chunks[1], &mut cursor_state);
 
         self.render_edit_window(chunks[2], f.buffer_mut());
     }

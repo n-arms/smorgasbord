@@ -21,8 +21,8 @@ struct Grid {
 }
 
 impl Grid {
-    fn add_widget(&mut self, position: GridPosition, widget: Widget) {
-        self.widgets.insert(position, widget);
+    fn add_widget(&mut self, position: GridPosition, widget: &Widget) {
+        self.widgets.insert(position, widget.clone());
     }
 }
 
@@ -32,7 +32,7 @@ pub struct ManagedGrid {
 }
 
 impl ManagedGrid {
-    pub fn add_widget(&mut self, widget: Widget) {
+    pub fn add_widget(&mut self, widget: &Widget) {
         if self.next_position.y < self.grid.height {
             self.grid.add_widget(self.next_position, widget);
         }
@@ -44,7 +44,7 @@ impl ManagedGrid {
         }
     }
 
-    pub fn populate_from(&mut self, widgets: impl IntoIterator<Item = Widget>) {
+    pub fn populate_from<'a>(&'a mut self, widgets: impl IntoIterator<Item = &'a Widget>) {
         for new_widget in widgets {
             let mut add = true;
             for old_widget in self.grid.widgets.values_mut() {
