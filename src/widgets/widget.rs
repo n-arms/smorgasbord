@@ -41,6 +41,7 @@ pub trait Kind: Debug {
     fn clone_box(&self) -> Box<dyn Kind>;
 }
 
+#[derive(Debug)]
 pub enum BuildResult {
     Complete(Box<dyn Kind>),
     Partial(Error),

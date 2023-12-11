@@ -1,11 +1,12 @@
 use anyhow::Result;
 use crossterm::event::KeyCode;
 use crossterm::event::{self, Event::Key, KeyCode::Char};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::backend::{Backend, Update};
 use crate::state::packing::GridPosition;
 use crate::widget_tree::Tree;
+use crate::widgets::tabs;
 use crate::widgets::{self, sendable_chooser, simple, Size};
 
 use thiserror::Error;
@@ -19,6 +20,7 @@ pub struct App<B> {
     pub widget_tree: Tree,
     pub cursor: GridPosition,
     pub state: State,
+    pub start_time: Instant,
 }
 
 pub enum State {
@@ -69,7 +71,10 @@ impl<B: Backend> App<B> {
                             _ => {}
                         },
                         State::Edit(edit) => {
-                            let Some(widget) = self.packing.get_mut_widget(edit.editting) else {
+                            let Some(widget) = self
+                                .packing
+                                .get_mut_widget(edit.editting, &mut self.widget_tree)
+                            else {
                                 return Err(Error::RunawayWidget {
                                     position: edit.editting,
                                 }
@@ -123,14 +128,17 @@ impl<B: Backend> App<B> {
         let all_widgets = self.widget_tree.widgets();
 
         for widget in all_widgets {
-            self.packing.add(widget.clone());
+            self.packing.add(widget.title.clone(), &self.widget_tree);
         }
 
         Ok(false)
     }
 
     fn try_edit(&mut self) {
-        if let Some(widget) = self.packing.get_mut_widget(self.cursor) {
+        if let Some(widget) = self
+            .packing
+            .get_mut_widget(self.cursor, &mut self.widget_tree)
+        {
             widget.reset();
             self.state = State::Edit(Edit {
                 editting: self.cursor,
@@ -162,17 +170,19 @@ impl<B: Backend> App<B> {
         let builders: Vec<Box<dyn widgets::Builder>> = vec![
             Box::new(simple::Builder),
             Box::new(sendable_chooser::Builder),
+            Box::new(tabs::Builder),
         ];
         let widget_tree = Tree::new(builders);
         Self {
             packing: Packing::new(Size {
-                width: 5,
+                width: 7,
                 height: 2,
             }),
             network_table,
             cursor: GridPosition::default(),
             state: State::View,
             widget_tree,
+            start_time: Instant::now(),
         }
     }
 }

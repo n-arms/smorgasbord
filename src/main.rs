@@ -19,12 +19,10 @@ mod view;
 mod widget_tree;
 mod widgets;
 
-use std::{collections::HashMap, fs};
+use std::fs;
 
 use anyhow::Result;
-use backend::mock::{TMap, Tree, T};
-use backend::nt::Nt;
-use backend::{Entry, Path};
+use backend::mock::{TMap, T};
 use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -72,10 +70,26 @@ fn run() -> Result<()> {
         "selected".into() => auto_selected,
         "default".into() => auto_default
     });
+    let tabs_type: T = Box::new(Value::String("Tabs".into()));
+    let drivetrain_option: T = Box::new(Value::Array(vec![
+        Value::String("/Smartdashboard/left encoder".into()),
+        Value::String("/Smartdashboard/right encoder".into()),
+        Value::String("/Smartdashboard/gyro yaw".into()),
+        Value::String("/Smartdashboard/kA".into()),
+    ]));
+    let auto_option: T = Box::new(Value::Array(vec![Value::String(
+        "/Smartdashboard/auto".into(),
+    )]));
+    let tabs: T = Box::new(map! {
+        ".type".into() => tabs_type,
+        "drivetrain".into() => drivetrain_option,
+        "auto".into() => auto_option
+    });
     let counter: T = Box::new(Value::F32(0.0));
     let mut smartdashboard_map: TMap = map! {
         "counter".into() => counter,
-        "auto".into() => auto
+        "auto".into() => auto,
+        "tabs".into() => tabs
     };
     for name in [
         "left encoder",

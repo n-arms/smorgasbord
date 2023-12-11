@@ -13,7 +13,7 @@ use crate::{
 
 pub struct View<'a> {
     pub size: Size,
-    pub widgets: &'a HashMap<GridPosition, Widget>,
+    pub widgets: HashMap<GridPosition, &'a Widget>,
     pub titles: &'a HashMap<Path, GridPosition>,
 }
 

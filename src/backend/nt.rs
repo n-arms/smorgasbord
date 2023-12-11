@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use core::fmt;
 use std::{
     collections::HashSet,
@@ -16,7 +18,6 @@ use super::{
 };
 use anyhow::Result;
 
-#[allow(dead_code)]
 pub struct Nt {
     read_receiver: UnboundedReceiver<Entry>,
     write_sender: UnboundedSender<Entry>,

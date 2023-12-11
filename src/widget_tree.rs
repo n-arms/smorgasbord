@@ -8,7 +8,6 @@ use crate::{
 
 use anyhow::Result;
 use thiserror::Error;
-use tracing::{event, Level};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -20,9 +19,15 @@ pub enum Error {
     NoSuchEntry(Vec<String>, String, Vec<String>),
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct BuilderIndex {
     pub index: usize,
+}
+
+impl fmt::Debug for BuilderIndex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.index.fmt(f)
+    }
 }
 
 pub struct Node {
@@ -52,14 +57,14 @@ impl Node {
         self.value
             .update_entry(path.clone(), rest, value, builders)?;
 
-        for widget in self.widgets.iter_mut() {
+        for widget in &mut self.widgets {
             widget.update_nt(&self.key, &self.value);
         }
 
         let (widgets, partials) = Self::run_builders(
             &self.key,
             &self.value,
-            path,
+            &path,
             builders,
             &self.partial_widgets,
         );
@@ -77,7 +82,7 @@ impl Node {
     fn run_builders(
         key: &Key,
         value: &Value,
-        path: Vec<Key>,
+        path: &[Key],
         builders: &[Box<dyn Builder>],
         partial_widgets: &[BuilderIndex],
     ) -> (Vec<Widget>, Vec<BuilderIndex>) {
@@ -88,9 +93,9 @@ impl Node {
 
             match builder.create_kind(key, value) {
                 BuildResult::Complete(kind) => {
-                    widgets.push(Widget::new(Path::try_from(path.clone()).unwrap(), kind));
+                    widgets.push(Widget::new(Path::try_from(path.to_owned()).unwrap(), kind));
                 }
-                BuildResult::Partial(error) => {
+                BuildResult::Partial(_) => {
                     partials.push(*index);
                 }
                 BuildResult::None => {}
@@ -114,10 +119,11 @@ impl Node {
             branches.create_entry(path.clone(), &rest[0], &rest[1..], value, builders)?;
             Value::Branch(branches)
         };
+
         let (widgets, partial_widgets) = Self::run_builders(
             first,
             &node_value,
-            path,
+            &path,
             builders,
             &(0..builders.len())
                 .map(|index| BuilderIndex { index })
@@ -149,7 +155,7 @@ impl Node {
         let (widgets, partial_widgets) = Self::run_builders(
             &self.key,
             &self.value,
-            path,
+            &path,
             builders,
             &(0..builders.len())
                 .map(|index| BuilderIndex { index })
@@ -170,6 +176,29 @@ impl Node {
         self.widgets.clear();
         self.value.strip_widgets();
     }
+
+    fn get<'a>(
+        &self,
+        rest: impl ExactSizeIterator<Item = &'a Key> + fmt::Debug,
+    ) -> Option<&Widget> {
+        if rest.len() == 0 {
+            return self.widgets.first();
+        }
+        self.value.get(rest)
+    }
+
+    fn get_mut<'a>(&mut self, rest: impl ExactSizeIterator<Item = &'a Key>) -> Option<&mut Widget> {
+        if rest.len() == 0 {
+            return self.widgets.first_mut();
+        }
+        self.value.get_mut(rest)
+    }
+}
+
+impl fmt::Debug for Node {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}[{}]: {:?}", self.key, self.widgets.len(), self.value)
+    }
 }
 
 pub enum Value {
@@ -179,10 +208,9 @@ pub enum Value {
 
 impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Self::Leaf(value) = self {
-            write!(f, "{value}")
-        } else {
-            write!(f, "[branch]")
+        match self {
+            Value::Leaf(value) => write!(f, "{value}"),
+            Value::Branch(nodes) => nodes.fmt(f),
         }
     }
 }
@@ -198,12 +226,12 @@ impl Value {
         match (self, rest) {
             (Self::Leaf(old_value), []) => {
                 *old_value = value;
-                return Ok(());
+                Ok(())
             }
-            (Self::Leaf(old_value), [first, rest @ ..]) => {
+            (Self::Leaf(old_value), [_, ..]) => {
                 Err(Error::ExpectedBranch(path, old_value.clone()).into())
             }
-            (Self::Branch(nodes), []) => Err(Error::ExpectedValue(path).into()),
+            (Self::Branch(_), []) => Err(Error::ExpectedValue(path).into()),
             (Self::Branch(nodes), [first, rest @ ..]) => {
                 nodes.update_entry(path, first, rest, value, builders)
             }
@@ -236,10 +264,10 @@ impl Value {
                 *old_value = value;
                 Ok(())
             }
-            (Self::Leaf(old_value), [first, rest @ ..]) => {
+            (Self::Leaf(old_value), [_, ..]) => {
                 Err(Error::ExpectedBranch(path, old_value.clone()).into())
             }
-            (Self::Branch(nodes), []) => Err(Error::ExpectedValue(path).into()),
+            (Self::Branch(_), []) => Err(Error::ExpectedValue(path).into()),
             (Self::Branch(nodes), [first, tail @ ..]) => {
                 nodes.create_entry(path, first, tail, value, builders)
             }
@@ -249,6 +277,34 @@ impl Value {
     fn strip_widgets(&mut self) {
         if let Self::Branch(nodes) = self {
             nodes.strip_widgets();
+        }
+    }
+
+    pub fn try_get_value(&self) -> Option<network_tables::Value> {
+        if let Self::Leaf(value) = self {
+            Some(value.clone())
+        } else {
+            None
+        }
+    }
+
+    fn get<'a>(
+        &self,
+        mut rest: impl ExactSizeIterator<Item = &'a Key> + fmt::Debug,
+    ) -> Option<&Widget> {
+        match (self, rest.next()) {
+            (Value::Branch(nodes), Some(first)) => nodes.get(first, rest),
+            _ => None,
+        }
+    }
+
+    fn get_mut<'a>(
+        &mut self,
+        mut rest: impl ExactSizeIterator<Item = &'a Key>,
+    ) -> Option<&mut Widget> {
+        match (self, rest.next()) {
+            (Value::Branch(nodes), Some(first)) => nodes.get_mut(first, rest),
+            _ => None,
         }
     }
 }
@@ -302,7 +358,7 @@ impl Nodes {
     pub fn try_get_value(&self, key: impl Into<Key>) -> Option<network_tables::Value> {
         let key = key.into();
         for node in &self.nodes {
-            if &node.key == &key {
+            if node.key == key {
                 if let Value::Leaf(value) = &node.value {
                     return Some(value.clone());
                 }
@@ -315,6 +371,48 @@ impl Nodes {
         for node in &mut self.nodes {
             node.strip_widgets();
         }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &'_ Node> {
+        self.nodes.iter()
+    }
+
+    fn get<'a>(
+        &self,
+        first: &Key,
+        rest: impl ExactSizeIterator<Item = &'a Key> + fmt::Debug,
+    ) -> Option<&Widget> {
+        for node in &self.nodes {
+            if &node.key == first {
+                return node.get(rest);
+            }
+        }
+        None
+    }
+
+    fn get_mut<'a>(
+        &mut self,
+        first: &Key,
+        rest: impl ExactSizeIterator<Item = &'a Key>,
+    ) -> Option<&mut Widget> {
+        for node in &mut self.nodes {
+            if &node.key == first {
+                return node.get_mut(rest);
+            }
+        }
+        None
+    }
+}
+
+impl fmt::Debug for Nodes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut set = f.debug_set();
+
+        for node in &self.nodes {
+            set.entry(node);
+        }
+
+        set.finish()
     }
 }
 
@@ -334,7 +432,6 @@ impl Tree {
     }
 
     pub fn update_entry(&mut self, entry: &Entry) -> Result<()> {
-        event!(Level::INFO, "updating tree with entry {entry:?}");
         self.nodes.update_entry(
             Vec::new(),
             &entry.path.first,
@@ -360,5 +457,19 @@ impl Tree {
             node.widgets(&mut widgets);
         }
         widgets
+    }
+
+    pub fn get(&self, path: &Path) -> Option<&Widget> {
+        self.nodes.get(&path.first, path.rest.iter())
+    }
+
+    pub fn get_mut(&mut self, path: &Path) -> Option<&mut Widget> {
+        self.nodes.get_mut(&path.first, path.rest.iter())
+    }
+}
+
+impl fmt::Debug for Tree {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.nodes.fmt(f)
     }
 }

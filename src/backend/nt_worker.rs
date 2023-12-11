@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::{
     collections::HashMap,
     net::{Ipv4Addr, SocketAddrV4},
@@ -151,7 +153,7 @@ async fn subscribe(client: &Client) -> Subscription {
         .unwrap()
 }
 
-pub fn value_type(value: ValueRef<'_>) -> Type {
+fn value_type(value: ValueRef<'_>) -> Type {
     match value {
         ValueRef::Boolean(_) => Type::Boolean,
         ValueRef::Integer(_) | ValueRef::Nil => Type::Int,

@@ -1,7 +1,7 @@
 use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    widgets::{Block, Borders, Paragraph, Widget as UIWidget},
+    widgets::{Block, Borders, Paragraph, StatefulWidget, Widget as UIWidget},
     Frame,
 };
 
@@ -16,13 +16,27 @@ impl<B: Backend> App<B> {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(3),
-                Constraint::Min(3 * self.packing.size.height as u16),
+                Constraint::Min(3 * u16::try_from(self.packing.size.height).unwrap()),
                 Constraint::Length(5),
             ])
             .split(f.size());
 
         self.render_title(chunks[0], f.buffer_mut());
 
+        self.render_grid(chunks[1], f.buffer_mut());
+
+        self.render_edit_window(chunks[2], f.buffer_mut());
+    }
+
+    fn render_grid(&self, area: Rect, buf: &mut Buffer) {
+        /*
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Min(30 * self.packing.size.width as u16),
+                Constraint::Min(20),
+            ])
+            .split(area);
         let mut cursor_state = packing::State {
             selected: match self.state {
                 State::View => false,
@@ -33,9 +47,21 @@ impl<B: Backend> App<B> {
 
         let packing_view = self.packing.widget();
 
-        f.render_stateful_widget(packing_view, chunks[1], &mut cursor_state);
+        packing_view.render(chunks[0], buf, &mut cursor_state);
 
-        self.render_edit_window(chunks[2], f.buffer_mut());
+        self.tab_selector.view().render(chunks[1], buf);*/
+
+        let mut cursor_state = packing::State {
+            selected: match self.state {
+                State::View => false,
+                State::Edit(_) => true,
+            },
+            cursor: self.cursor,
+        };
+
+        let packing_view = self.packing.widget(&self.widget_tree);
+
+        packing_view.render(area, buf, &mut cursor_state);
     }
 
     fn render_edit_window(&self, area: Rect, buf: &mut Buffer) {
@@ -65,16 +91,23 @@ impl<B: Backend> App<B> {
 
         let layout = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .constraints([
+                Constraint::Percentage(50),
+                Constraint::Percentage(30),
+                Constraint::Percentage(20),
+            ])
             .split(title_block.inner(area));
 
         let title = Paragraph::new("Smorgasbord");
+
+        let elapsed = Paragraph::new(format!("{:?}", self.start_time.elapsed()));
 
         let status = self.network_table.status();
 
         title_block.render(area, buf);
         title.render(layout[0], buf);
-        status.render(layout[1], buf);
+        elapsed.render(layout[1], buf);
+        status.render(layout[2], buf);
     }
 }
 

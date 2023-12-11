@@ -1,11 +1,10 @@
 use super::{Backend, Entry, Key, Path, Status, Update, Write};
 use network_tables::rmpv::Integer;
 use network_tables::Value;
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Mutex;
-use std::time::{Duration, Instant};
-use std::{collections::HashMap, sync::atomic::AtomicU64};
-use tracing::{event, Level};
+use std::time::Instant;
 
 pub type T = Box<dyn Tree>;
 pub type TMap = HashMap<Key, T>;
@@ -29,11 +28,9 @@ impl Backend for HashMap<Key, Box<dyn Tree>> {
     }
 
     fn write(&mut self, write: Write) {
-        event!(Level::INFO, "writing {:?}", write);
         for entry in write.entries {
-            Tree::write(self, entry.path.to_vec(), entry.value);
+            Tree::write(self, entry.path.into_vec(), entry.value);
         }
-        event!(Level::INFO, "after writing is {:?}", self);
     }
 
     fn status(&self) -> Status {
@@ -62,22 +59,19 @@ impl Tree for HashMap<Key, Box<dyn Tree>> {
     }
 
     fn write(&mut self, mut path: Vec<Key>, value: Value) {
-        event!(Level::INFO, "writing {} with path {:?}", value, path);
         if path.is_empty() {
-            panic!("trying to write to folder {:?}", self);
+            panic!("trying to write to folder {self:?}");
         } else {
             let key = path.remove(0);
 
             if let Some(existing) = self.get_mut(&key) {
                 existing.write(path, value);
+            } else if path.is_empty() {
+                self.insert(key, Box::new(value));
             } else {
-                if path.is_empty() {
-                    self.insert(key, Box::new(value));
-                } else {
-                    let mut map = HashMap::new();
-                    Tree::write(&mut map, path, value);
-                    self.insert(key, Box::new(map));
-                }
+                let mut map = HashMap::new();
+                Tree::write(&mut map, path, value);
+                self.insert(key, Box::new(map));
             }
         }
     }
@@ -90,28 +84,24 @@ impl Tree for Value {
         let mut start = START.lock().unwrap();
 
         let is_old = if let Some(start_time) = start.as_ref() {
-            start_time.elapsed().as_millis() > 5000
+            start_time.elapsed().as_millis() > 500
         } else {
             *start = Some(Instant::now());
             false
         };
 
-        let print = match self {
+        match self {
             Value::Integer(value) => {
                 *value = Integer::from(value.as_i64().unwrap() + 1);
-                false
             }
             Value::F32(value) => {
                 *value += 1.0;
-                false
             }
             Value::F64(value) => {
                 *value += 1.0;
-                false
             }
-            Value::String(..) => true,
-            _ => false,
-        };
+            _ => {}
+        }
         let entry = Entry {
             path,
             value: self.clone(),

@@ -1,3 +1,5 @@
+use std::{fmt, str::FromStr};
+
 use network_tables::Value;
 use thiserror::Error;
 
@@ -16,7 +18,7 @@ impl Write {
 
 pub type Key = String;
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Path {
     pub first: Key,
     pub rest: Vec<Key>,
@@ -27,9 +29,21 @@ impl Path {
         self.rest.push(arg.into());
     }
 
-    pub fn to_vec(mut self) -> Vec<Key> {
+    pub fn into_vec(mut self) -> Vec<Key> {
         self.rest.insert(0, self.first);
         self.rest
+    }
+}
+
+impl fmt::Debug for Path {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "/{}", self.first)?;
+
+        for key in &self.rest {
+            write!(f, "/{key}")?;
+        }
+
+        Ok(())
     }
 }
 
@@ -47,6 +61,43 @@ impl TryFrom<Vec<Key>> for Path {
             let first = value.remove(0);
             Ok(Self { first, rest: value })
         }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum PathError {
+    #[error("Path is empty")]
+    Empty,
+    #[error("Path {0} doesn't start with a /")]
+    ExpectedSlash(String),
+}
+
+impl FromStr for Path {
+    type Err = PathError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut options = Vec::new();
+
+        let mut current = String::new();
+
+        let mut needs_slash = true;
+
+        for char in s.chars() {
+            if needs_slash {
+                if char != '/' {
+                    return Err(PathError::ExpectedSlash(s.to_string()));
+                }
+                needs_slash = false;
+            } else if char == '/' {
+                options.push(current);
+                current = String::new();
+            } else {
+                current.push(char);
+            }
+        }
+        options.push(current);
+
+        options.try_into().map_err(|_| PathError::Empty)
     }
 }
 
