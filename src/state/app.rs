@@ -1,6 +1,6 @@
 use anyhow::Result;
-use crossterm::event::KeyCode;
 use crossterm::event::{self, Event::Key, KeyCode::Char};
+use crossterm::event::{Event, KeyCode};
 use std::time::{Duration, Instant};
 
 use crate::backend::{Backend, Update};
@@ -44,81 +44,79 @@ pub enum Error {
 }
 
 impl<B: Backend> App<B> {
-    pub fn update(&mut self) -> Result<bool> {
+    pub fn update(&mut self, event: Option<Event>) -> Result<bool> {
         self.check_health()?;
-        if event::poll(Duration::from_millis(250))? {
-            if let Key(key) = event::read()? {
-                if key.kind == event::KeyEventKind::Press {
-                    match &mut self.state {
-                        State::View => match key.code {
-                            Char('q') => return Ok(true),
+
+        if let Some(Event::Key(key)) = event {
+            if key.kind == event::KeyEventKind::Press {
+                match &mut self.state {
+                    State::View => match key.code {
+                        Char('q') => return Ok(true),
+                        KeyCode::Left => {
+                            self.cursor.x = self.cursor.x.saturating_sub(1);
+                        }
+                        KeyCode::Right => {
+                            self.cursor.x = (self.cursor.x + 1).min(self.packing.get_width() - 1);
+                        }
+                        KeyCode::Up => {
+                            self.cursor.y = self.cursor.y.saturating_sub(1);
+                        }
+                        KeyCode::Down => {
+                            self.cursor.y = (self.cursor.y + 1).min(self.packing.get_height() - 1);
+                        }
+                        KeyCode::Enter => {
+                            self.try_edit();
+                        }
+                        _ => {}
+                    },
+                    State::Edit(edit) => {
+                        let Some(widget) = self
+                            .packing
+                            .get_mut_widget(edit.editting, &mut self.widget_tree)
+                        else {
+                            return Err(Error::RunawayWidget {
+                                position: edit.editting,
+                            }
+                            .into());
+                        };
+                        match key.code {
+                            KeyCode::Enter => {
+                                let write = widget.update(edit.text_field.value());
+                                self.network_table.write(write.entries().cloned().collect());
+
+                                if let Some(filter) = write.try_filter() {
+                                    self.packing.clear();
+                                    self.filter = filter;
+                                }
+
+                                edit.text_field.reset();
+                            }
                             KeyCode::Left => {
-                                self.cursor.x = self.cursor.x.saturating_sub(1);
+                                edit.text_field.handle(InputRequest::GoToPrevChar);
                             }
                             KeyCode::Right => {
-                                self.cursor.x =
-                                    (self.cursor.x + 1).min(self.packing.get_width() - 1);
+                                edit.text_field.handle(InputRequest::GoToNextChar);
                             }
-                            KeyCode::Up => {
-                                self.cursor.y = self.cursor.y.saturating_sub(1);
+                            KeyCode::Backspace => {
+                                edit.text_field.handle(InputRequest::DeletePrevChar);
                             }
-                            KeyCode::Down => {
-                                self.cursor.y =
-                                    (self.cursor.y + 1).min(self.packing.get_height() - 1);
+                            Char(c) => {
+                                edit.text_field.handle(InputRequest::InsertChar(c));
                             }
-                            KeyCode::Enter => {
-                                self.try_edit();
+                            KeyCode::Esc => {
+                                self.state = State::View;
+                                return Ok(false);
                             }
                             _ => {}
-                        },
-                        State::Edit(edit) => {
-                            let Some(widget) = self
-                                .packing
-                                .get_mut_widget(edit.editting, &mut self.widget_tree)
-                            else {
-                                return Err(Error::RunawayWidget {
-                                    position: edit.editting,
-                                }
-                                .into());
-                            };
-                            match key.code {
-                                KeyCode::Enter => {
-                                    let write = widget.update(edit.text_field.value());
-                                    self.network_table.write(write.entries().cloned().collect());
-
-                                    if let Some(filter) = write.try_filter() {
-                                        self.packing.clear();
-                                        self.filter = filter;
-                                    }
-
-                                    edit.text_field.reset();
-                                }
-                                KeyCode::Left => {
-                                    edit.text_field.handle(InputRequest::GoToPrevChar);
-                                }
-                                KeyCode::Right => {
-                                    edit.text_field.handle(InputRequest::GoToNextChar);
-                                }
-                                KeyCode::Backspace => {
-                                    edit.text_field.handle(InputRequest::DeletePrevChar);
-                                }
-                                Char(c) => {
-                                    edit.text_field.handle(InputRequest::InsertChar(c));
-                                }
-                                KeyCode::Esc => {
-                                    self.state = State::View;
-                                    return Ok(false);
-                                }
-                                _ => {}
-                            };
-                            if widget.is_finished() {
-                                self.state = State::View;
-                            }
+                        };
+                        if widget.is_finished() {
+                            self.state = State::View;
                         }
                     }
                 }
             }
         }
+
         let Update {
             to_update,
             to_create,

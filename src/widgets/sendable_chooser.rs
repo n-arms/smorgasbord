@@ -139,12 +139,11 @@ impl Kind for SendableChooser {
     }
 
     fn update_nt(&mut self, _key: &Key, value: &Value) {
-        let Ok(value) = SendableChooser::try_from(value) else {
-            todo!();
-        };
-        self.options = value.options;
-        self.default = value.default;
-        self.active = value.active;
+        if let Ok(value) = SendableChooser::try_from(value) {
+            self.options = value.options;
+            self.default = value.default;
+            self.active = value.active;
+        }
     }
 
     fn reset(&mut self) {

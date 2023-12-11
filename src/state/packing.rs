@@ -16,24 +16,32 @@ pub struct GridPosition {
 pub struct Packing {
     pub size: Size,
     pub widgets: HashMap<GridPosition, Path>,
-    pub titles: HashMap<Path, GridPosition>,
-    pub occupied: HashSet<GridPosition>,
+    pub titles: HashSet<Path>,
+    pub occupied: Vec<bool>,
 }
 
 impl Packing {
     pub fn new(size: Size) -> Self {
         Self {
             size,
-            widgets: HashMap::new(),
-            titles: HashMap::new(),
-            occupied: HashSet::new(),
+            widgets: Default::default(),
+            titles: Default::default(),
+            occupied: vec![false; size.width * size.height],
         }
+    }
+
+    fn is_occupied(&self, position: GridPosition) -> bool {
+        self.occupied[position.x + position.y * self.size.width]
+    }
+
+    fn set_occupied(&mut self, position: GridPosition, is_occupied: bool) {
+        self.occupied[position.x + position.y * self.size.width] = is_occupied;
     }
 
     fn fits(&self, start: GridPosition, size: Size) -> bool {
         for row in start.y..start.y + size.height {
             for col in start.x..start.x + size.width {
-                if self.occupied.contains(&GridPosition { x: col, y: row }) {
+                if self.is_occupied(GridPosition { x: col, y: row }) {
                     return false;
                 }
             }
@@ -44,19 +52,14 @@ impl Packing {
     fn insert(&mut self, position: GridPosition, size: Size, path: Path) {
         for row in position.y..position.y + size.height {
             for col in position.x..position.x + size.width {
-                self.occupied.insert(GridPosition { x: col, y: row });
+                self.set_occupied(GridPosition { x: col, y: row }, true);
             }
         }
-        self.titles.insert(path.clone(), position);
+        self.titles.insert(path.clone());
         self.widgets.insert(position, path);
     }
 
-    pub fn add(&mut self, path: Path, widgets: &Tree) {
-        let widget = widgets.get(&path).unwrap();
-        let size = widget.size();
-        if self.titles.get(&widget.title).is_some() {
-            return;
-        }
+    fn add_unchecked(&mut self, path: Path, size: Size) {
         for start_row in 0..self.size.height {
             for start_col in 0..self.size.width {
                 let position = GridPosition {
@@ -69,6 +72,13 @@ impl Packing {
                     return;
                 }
             }
+        }
+    }
+
+    pub fn add(&mut self, path: Path, widgets: &Tree) {
+        if self.titles.get(&path).is_none() {
+            let size = widgets.get(&path).unwrap().size();
+            self.add_unchecked(path, size);
         }
     }
 
@@ -123,11 +133,13 @@ impl Packing {
     }
 
     pub fn add_all(&mut self, mut all_widgets: Vec<Path>, widget_tree: &Tree) {
+        all_widgets.retain(|path| !self.titles.contains(&path));
         all_widgets.sort_by_key(|path| widget_tree.get(path).map(|widget| widget.size().area()));
         all_widgets.reverse();
 
         for widget in all_widgets {
-            self.add(widget, widget_tree)
+            let size = widget_tree.get(&widget).unwrap().size();
+            self.add_unchecked(widget, size);
         }
     }
 }

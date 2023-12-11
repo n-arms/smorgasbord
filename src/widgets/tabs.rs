@@ -116,7 +116,7 @@ impl TryFrom<&Value> for Tabs {
             let widgets: Result<Vec<_>, _> = inner.into_iter().map(|path| path.parse()).collect();
 
             options.push(Tab {
-                option,
+                option: option.to_string(),
                 widgets: widgets.map_err(Error::PathParse)?,
             });
         }

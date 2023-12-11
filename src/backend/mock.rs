@@ -80,8 +80,16 @@ pub fn example_dashboard() -> TMap {
     }
 }
 
-fn rand_string() -> String {
+fn rand_string() -> Value {
     let mut string = String::new();
+    for _ in 0..fastrand::usize(3..6) {
+        string.push(fastrand::alphanumeric());
+    }
+    Value::String(string.into())
+}
+
+fn rand_key() -> Key {
+    let mut string = Key::new();
     for _ in 0..fastrand::usize(3..6) {
         string.push(fastrand::alphanumeric());
     }
@@ -92,7 +100,7 @@ fn chooser() -> T {
     let r#type: T = Box::new(Value::String("String Chooser".into()));
     let mut option_vec = Vec::new();
     for _ in 0..fastrand::usize(3..6) {
-        option_vec.push(Value::String(rand_string().into()))
+        option_vec.push(rand_string())
     }
     let selected: T = Box::new(option_vec[0].clone());
     let default: T = Box::new(option_vec[0].clone());
@@ -109,11 +117,11 @@ pub fn stressing_example(widgets: usize) -> TMap {
     let mut smartdashboard_map: TMap = TMap::new();
 
     for _ in 0..(widgets / 3) {
-        smartdashboard_map.insert(rand_string(), chooser());
+        smartdashboard_map.insert(rand_key(), chooser());
     }
 
     for _ in 0..(widgets - widgets / 3) {
-        smartdashboard_map.insert(rand_string(), Box::new(Value::F32(0.0)));
+        smartdashboard_map.insert(rand_key(), Box::new(Value::F32(0.0)));
     }
 
     let smartdashboard: T = Box::new(smartdashboard_map);
@@ -161,7 +169,7 @@ impl Tree for HashMap<Key, Box<dyn Tree>> {
         self.iter_mut()
             .map(|(key, tree)| {
                 let mut inner_path = path.clone();
-                inner_path.push(key);
+                inner_path.push(key.clone());
                 tree.update(inner_path)
             })
             .fold(Update::default(), |mut acc, x| {

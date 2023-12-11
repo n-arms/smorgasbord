@@ -19,11 +19,12 @@ mod view;
 mod widget_tree;
 mod widgets;
 
-use std::fs;
+use std::{fs, time::Duration};
 
 use anyhow::Result;
 use backend::mock::{self, TMap, T};
 use crossterm::{
+    event::{self as term_event, KeyEvent, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -71,7 +72,12 @@ fn run() -> Result<()> {
     );
     t.draw(|f| app.render(f))?;
     loop {
-        match app.update() {
+        let event = if term_event::poll(Duration::from_millis(20))? {
+            Some(term_event::read()?)
+        } else {
+            None
+        };
+        match app.update(event) {
             Ok(result) => {
                 if result {
                     break;
@@ -82,6 +88,10 @@ fn run() -> Result<()> {
             }
         }
         t.draw(|f| app.render(f))?;
+
+        if app.start_time.elapsed() > Duration::from_secs(15) {
+            break;
+        }
     }
 
     Ok(())

@@ -14,7 +14,7 @@ use tracing::{event, Level};
 use super::{
     backend::{Entry, Path, Status, StatusUpdate, Update, Write},
     nt_worker::Worker,
-    Backend,
+    Backend, Key,
 };
 use anyhow::Result;
 
@@ -115,11 +115,11 @@ pub enum KeyError {
 
 pub fn from_nt_path(path: String) -> Result<Path, KeyError> {
     let buf = PathBuf::from(path);
-    let mut vec: Vec<String> = buf
+    let mut vec: Vec<Key> = buf
         .components()
         .filter_map(|comp| {
             if let Component::Normal(str) = comp {
-                Some(str.to_string_lossy().to_string())
+                Some(Key::from(str.to_string_lossy()))
             } else {
                 None
             }

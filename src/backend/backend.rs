@@ -1,6 +1,7 @@
 use std::{fmt, str::FromStr};
 
 use network_tables::Value;
+use smartstring::{LazyCompact, SmartString};
 use thiserror::Error;
 
 use crate::widgets::tabs::Filter;
@@ -35,7 +36,7 @@ impl Write {
     }
 }
 
-pub type Key = String;
+pub type Key = SmartString<LazyCompact>;
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Path {
@@ -97,7 +98,7 @@ impl FromStr for Path {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut options = Vec::new();
 
-        let mut current = String::new();
+        let mut current = Key::new();
 
         let mut needs_slash = true;
 
@@ -109,7 +110,7 @@ impl FromStr for Path {
                 needs_slash = false;
             } else if char == '/' {
                 options.push(current);
-                current = String::new();
+                current = Key::new();
             } else {
                 current.push(char);
             }

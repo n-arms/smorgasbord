@@ -1,4 +1,7 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 use ratatui::{
     prelude::{Constraint, Direction, Layout, Rect},
@@ -14,7 +17,7 @@ use crate::{
 pub struct View<'a> {
     pub size: Size,
     pub widgets: HashMap<GridPosition, &'a Widget>,
-    pub titles: &'a HashMap<Path, GridPosition>,
+    pub titles: &'a HashSet<Path>,
 }
 
 pub struct State {

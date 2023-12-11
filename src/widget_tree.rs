@@ -16,7 +16,7 @@ pub enum Error {
     #[error("Expected a branch at {0:?} instead got value {1}")]
     ExpectedBranch(Vec<Key>, network_tables::Value),
     #[error("Expected entry {1:?}, {2:?} at path {0:?}")]
-    NoSuchEntry(Vec<String>, String, Vec<String>),
+    NoSuchEntry(Vec<Key>, String, Vec<Key>),
 }
 
 #[derive(Copy, Clone)]
@@ -328,7 +328,7 @@ impl Nodes {
                 return node.update_entry(path, rest, value, builders);
             }
         }
-        Err(Error::NoSuchEntry(path, first.clone(), rest.to_vec()).into())
+        Err(Error::NoSuchEntry(path, first.to_string(), rest.to_vec()).into())
     }
 
     fn create_entry(
