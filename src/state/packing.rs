@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     backend::Path,
@@ -17,6 +17,7 @@ pub struct Packing {
     pub size: Size,
     pub widgets: HashMap<GridPosition, Path>,
     pub titles: HashMap<Path, GridPosition>,
+    pub occupied: HashSet<GridPosition>,
 }
 
 impl Packing {
@@ -25,34 +26,48 @@ impl Packing {
             size,
             widgets: HashMap::new(),
             titles: HashMap::new(),
+            occupied: HashSet::new(),
         }
+    }
+
+    fn fits(&self, start: GridPosition, size: Size) -> bool {
+        for row in start.y..start.y + size.height {
+            for col in start.x..start.x + size.width {
+                if self.occupied.contains(&GridPosition { x: col, y: row }) {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    fn insert(&mut self, position: GridPosition, size: Size, path: Path) {
+        for row in position.y..position.y + size.height {
+            for col in position.x..position.x + size.width {
+                self.occupied.insert(GridPosition { x: col, y: row });
+            }
+        }
+        self.titles.insert(path.clone(), position);
+        self.widgets.insert(position, path);
     }
 
     pub fn add(&mut self, path: Path, widgets: &Tree) {
         let widget = widgets.get(&path).unwrap();
+        let size = widget.size();
         if self.titles.get(&widget.title).is_some() {
             return;
         }
         for start_row in 0..self.size.height {
-            'finding: for start_col in 0..self.size.width {
-                let size = widget.size();
-
-                for row in start_row..start_row + size.height {
-                    for col in start_col..start_col + size.width {
-                        if self.widgets.contains_key(&GridPosition { x: col, y: row }) {
-                            continue 'finding;
-                        }
-                    }
-                }
-
+            for start_col in 0..self.size.width {
                 let position = GridPosition {
                     x: start_col,
                     y: start_row,
                 };
 
-                self.titles.insert(widget.title.clone(), position);
-                self.widgets.insert(position, path);
-                return;
+                if self.fits(position, size) {
+                    self.insert(position, size, path);
+                    return;
+                }
             }
         }
     }
@@ -104,5 +119,15 @@ impl Packing {
     pub fn clear(&mut self) {
         self.widgets.clear();
         self.titles.clear();
+        self.occupied.clear();
+    }
+
+    pub fn add_all(&mut self, mut all_widgets: Vec<Path>, widget_tree: &Tree) {
+        all_widgets.sort_by_key(|path| widget_tree.get(path).map(|widget| widget.size().area()));
+        all_widgets.reverse();
+
+        for widget in all_widgets {
+            self.add(widget, widget_tree)
+        }
     }
 }

@@ -9,6 +9,119 @@ use std::time::Instant;
 pub type T = Box<dyn Tree>;
 pub type TMap = HashMap<Key, T>;
 
+pub fn example_dashboard() -> TMap {
+    let auto_type: T = Box::new(Value::String("String Chooser".into()));
+    let auto_options: T = Box::new(Value::Array(vec![
+        Value::String("Left".into()),
+        Value::String("Right".into()),
+    ]));
+    let auto_selected: T = Box::new(Value::String("Left".into()));
+    let auto_default: T = Box::new(Value::String("Left".into()));
+    let auto: T = Box::new(map! {
+        ".type".into() => auto_type,
+        "options".into() => auto_options,
+        "selected".into() => auto_selected,
+        "default".into() => auto_default
+    });
+    let tabs_type: T = Box::new(Value::String("Tabs".into()));
+    let drivetrain_option: T = Box::new(Value::Array(vec![
+        Value::String("/Smartdashboard/left encoder".into()),
+        Value::String("/Smartdashboard/right encoder".into()),
+        Value::String("/Smartdashboard/gyro yaw".into()),
+        Value::String("/Smartdashboard/kA".into()),
+        Value::String("/Smartdashboard/kV".into()),
+        Value::String("/Smartdashboard/kS".into()),
+    ]));
+    let arm_option: T = Box::new(Value::Array(vec![
+        Value::String("/Smartdashboard/arm encoder".into()),
+        Value::String("/Smartdashboard/arm current".into()),
+        Value::String("/Smartdashboard/arm voltage".into()),
+        Value::String("/Smartdashboard/arm kS".into()),
+        Value::String("/Smartdashboard/arm kG".into()),
+        Value::String("/Smartdashboard/arm kV".into()),
+    ]));
+    let auto_option: T = Box::new(Value::Array(vec![Value::String(
+        "/Smartdashboard/auto".into(),
+    )]));
+    let tabs: T = Box::new(map! {
+        ".type".into() => tabs_type,
+        "drivetrain".into() => drivetrain_option,
+        "arm".into() => arm_option,
+        "auto".into() => auto_option
+    });
+    let counter: T = Box::new(Value::F32(0.0));
+    let mut smartdashboard_map: TMap = map! {
+        "counter".into() => counter,
+        "auto".into() => auto,
+        "tabs".into() => tabs
+    };
+    for name in [
+        "left encoder",
+        "right encoder",
+        "gyro yaw",
+        "through bore",
+        "kA",
+        "kV",
+        "kS",
+        "arm encoder",
+        "arm current",
+        "arm voltage",
+        "arm kS",
+        "arm kG",
+        "arm kV",
+    ] {
+        let value: T = Box::new(Value::F32(0.0));
+        smartdashboard_map.insert(name.into(), value);
+    }
+
+    let smartdashboard: T = Box::new(smartdashboard_map);
+    map! {
+        "Smartdashboard".into() => smartdashboard
+    }
+}
+
+fn rand_string() -> String {
+    let mut string = String::new();
+    for _ in 0..fastrand::usize(3..6) {
+        string.push(fastrand::alphanumeric());
+    }
+    string
+}
+
+fn chooser() -> T {
+    let r#type: T = Box::new(Value::String("String Chooser".into()));
+    let mut option_vec = Vec::new();
+    for _ in 0..fastrand::usize(3..6) {
+        option_vec.push(Value::String(rand_string().into()))
+    }
+    let selected: T = Box::new(option_vec[0].clone());
+    let default: T = Box::new(option_vec[0].clone());
+    let options: T = Box::new(Value::Array(option_vec));
+    Box::new(map! {
+        ".type".into() => r#type,
+        "options".into() => options,
+        "selected".into() => selected,
+        "default".into() => default
+    })
+}
+
+pub fn stressing_example(widgets: usize) -> TMap {
+    let mut smartdashboard_map: TMap = TMap::new();
+
+    for _ in 0..(widgets / 3) {
+        smartdashboard_map.insert(rand_string(), chooser());
+    }
+
+    for _ in 0..(widgets - widgets / 3) {
+        smartdashboard_map.insert(rand_string(), Box::new(Value::F32(0.0)));
+    }
+
+    let smartdashboard: T = Box::new(smartdashboard_map);
+    map! {
+        "Smartdashboard".into() => smartdashboard
+    }
+}
+
 impl Backend for HashMap<Key, Box<dyn Tree>> {
     fn update(&mut self) -> Update {
         let mut to_update = Vec::new();
@@ -92,13 +205,25 @@ impl Tree for Value {
 
         match self {
             Value::Integer(value) => {
-                *value = Integer::from(value.as_i64().unwrap() + 1);
+                if fastrand::bool() {
+                    *value = Integer::from(value.as_i64().unwrap() + 1);
+                } else if fastrand::bool() {
+                    *value = Integer::from((value.as_f64().unwrap() * 0.9) as u64);
+                }
             }
             Value::F32(value) => {
-                *value += 1.0;
+                if fastrand::bool() {
+                    *value += 1.0;
+                } else if fastrand::bool() {
+                    *value *= 0.9;
+                }
             }
             Value::F64(value) => {
-                *value += 1.0;
+                if fastrand::bool() {
+                    *value += 1.0;
+                } else if fastrand::bool() {
+                    *value *= 0.9;
+                }
             }
             _ => {}
         }

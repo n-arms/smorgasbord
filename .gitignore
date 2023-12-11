@@ -21,3 +21,4 @@ Cargo.lock
 output.txt
 error.txt
 smorgasbord.log
+perf.data*

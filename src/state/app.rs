@@ -132,13 +132,15 @@ impl<B: Backend> App<B> {
             self.widget_tree.create_entry(&entry)?;
         }
 
-        let all_widgets = self.widget_tree.widgets();
+        let all_widgets = self
+            .widget_tree
+            .widgets()
+            .into_iter()
+            .filter(|widget| self.filter.contains(widget))
+            .map(|widget| widget.title.clone())
+            .collect();
 
-        for widget in all_widgets {
-            if self.filter.contains(widget) {
-                self.packing.add(widget.title.clone(), &self.widget_tree);
-            }
-        }
+        self.packing.add_all(all_widgets, &self.widget_tree);
 
         Ok(false)
     }
@@ -175,7 +177,7 @@ impl<B: Backend> App<B> {
         Ok(())
     }
 
-    pub fn new(network_table: B) -> Self {
+    pub fn new(size: Size, network_table: B) -> Self {
         let builders: Vec<Box<dyn widgets::Builder>> = vec![
             Box::new(simple::Builder),
             Box::new(sendable_chooser::Builder),
@@ -183,10 +185,7 @@ impl<B: Backend> App<B> {
         ];
         let widget_tree = Tree::new(builders);
         Self {
-            packing: Packing::new(Size {
-                width: 7,
-                height: 2,
-            }),
+            packing: Packing::new(size),
             network_table,
             cursor: GridPosition::default(),
             state: State::View,

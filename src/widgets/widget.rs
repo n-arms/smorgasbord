@@ -29,6 +29,11 @@ pub struct Size {
     pub width: usize,
     pub height: usize,
 }
+impl Size {
+    pub fn area(&self) -> usize {
+        self.width * self.height
+    }
+}
 
 pub trait Kind: Debug {
     fn render(&self, area: Rect, buf: &mut Buffer);
