@@ -3,16 +3,35 @@ use std::{fmt, str::FromStr};
 use network_tables::Value;
 use thiserror::Error;
 
+use crate::widgets::tabs::Filter;
+
 #[derive(Debug, Default)]
 pub struct Write {
-    pub entries: Vec<Entry>,
+    entries: Vec<Entry>,
+    filter: Option<Filter>,
 }
 
 impl Write {
-    pub fn one(entry: Entry) -> Write {
-        Write {
+    pub fn one(entry: Entry) -> Self {
+        Self {
             entries: vec![entry],
+            filter: None,
         }
+    }
+
+    pub fn filter(filter: Filter) -> Self {
+        Self {
+            entries: Vec::new(),
+            filter: Some(filter),
+        }
+    }
+
+    pub fn entries<'a>(&'a self) -> impl Iterator<Item = &'a Entry> {
+        self.entries.iter()
+    }
+
+    pub fn try_filter(&self) -> Option<Filter> {
+        self.filter.clone()
     }
 }
 
@@ -101,7 +120,7 @@ impl FromStr for Path {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Entry {
     pub path: Path,
     pub value: Value,
@@ -133,6 +152,6 @@ pub enum StatusUpdate {
 
 pub trait Backend {
     fn update(&mut self) -> Update;
-    fn write(&mut self, write: Write);
+    fn write(&mut self, entries: Vec<Entry>);
     fn status(&self) -> Status;
 }

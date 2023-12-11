@@ -100,4 +100,9 @@ impl Packing {
             titles: &self.titles,
         }
     }
+
+    pub fn clear(&mut self) {
+        self.widgets.clear();
+        self.titles.clear();
+    }
 }

@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use crate::backend::{Backend, Update};
 use crate::state::packing::GridPosition;
 use crate::widget_tree::Tree;
-use crate::widgets::tabs;
+use crate::widgets::tabs::{self, Filter};
 use crate::widgets::{self, sendable_chooser, simple, Size};
 
 use thiserror::Error;
@@ -21,6 +21,7 @@ pub struct App<B> {
     pub cursor: GridPosition,
     pub state: State,
     pub start_time: Instant,
+    pub filter: Filter,
 }
 
 pub enum State {
@@ -82,8 +83,14 @@ impl<B: Backend> App<B> {
                             };
                             match key.code {
                                 KeyCode::Enter => {
-                                    self.network_table
-                                        .write(widget.update(edit.text_field.value()));
+                                    let write = widget.update(edit.text_field.value());
+                                    self.network_table.write(write.entries().cloned().collect());
+
+                                    if let Some(filter) = write.try_filter() {
+                                        self.packing.clear();
+                                        self.filter = filter;
+                                    }
+
                                     edit.text_field.reset();
                                 }
                                 KeyCode::Left => {
@@ -128,7 +135,9 @@ impl<B: Backend> App<B> {
         let all_widgets = self.widget_tree.widgets();
 
         for widget in all_widgets {
-            self.packing.add(widget.title.clone(), &self.widget_tree);
+            if self.filter.contains(widget) {
+                self.packing.add(widget.title.clone(), &self.widget_tree);
+            }
         }
 
         Ok(false)
@@ -183,6 +192,7 @@ impl<B: Backend> App<B> {
             state: State::View,
             widget_tree,
             start_time: Instant::now(),
+            filter: Filter::default(),
         }
     }
 }

@@ -52,8 +52,8 @@ impl Backend for Nt {
         }
     }
 
-    fn write(&mut self, write: Write) {
-        for entry in write.entries {
+    fn write(&mut self, entries: Vec<Entry>) {
+        for entry in entries {
             self.write_update(entry);
         }
     }

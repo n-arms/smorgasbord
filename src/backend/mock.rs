@@ -27,8 +27,8 @@ impl Backend for HashMap<Key, Box<dyn Tree>> {
         }
     }
 
-    fn write(&mut self, write: Write) {
-        for entry in write.entries {
+    fn write(&mut self, entries: Vec<Entry>) {
+        for entry in entries {
             Tree::write(self, entry.path.into_vec(), entry.value);
         }
     }

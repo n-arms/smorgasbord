@@ -4,10 +4,12 @@ use ratatui::{
     widgets::{Paragraph, Widget},
 };
 use thiserror::Error;
+use tracing::{event, Level};
 
 use crate::{
     backend::{Key, Path, PathError, Write},
     widget_tree::Value,
+    widgets,
 };
 
 use super::{util::NTValue, widget, BuildResult, Kind, Size};
@@ -25,10 +27,25 @@ pub struct Tabs {
     is_finished: bool,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum Filter<'a> {
-    General,
-    Paths(&'a [Path]),
+#[derive(Clone, Debug)]
+pub enum Filter {
+    NoneOf(Vec<Path>),
+    OneOf(Vec<Path>),
+}
+
+impl Filter {
+    pub fn contains(&self, widget: &widgets::Widget) -> bool {
+        match self {
+            Filter::NoneOf(paths) => !paths.contains(&widget.title),
+            Filter::OneOf(paths) => paths.contains(&widget.title),
+        }
+    }
+}
+
+impl Default for Filter {
+    fn default() -> Self {
+        Self::NoneOf(Vec::new())
+    }
 }
 
 #[derive(Debug, Error)]
@@ -54,9 +71,15 @@ impl Tabs {
         if let Some(index) = self.selected {
             let paths = &self.options[index].widgets;
 
-            Filter::Paths(paths)
+            Filter::OneOf(paths.clone())
         } else {
-            Filter::General
+            let mut paths = Vec::new();
+
+            for tab in &self.options {
+                paths.extend(tab.widgets.iter().cloned());
+            }
+
+            Filter::NoneOf(paths)
         }
     }
 }
@@ -137,7 +160,7 @@ impl Kind for Tabs {
         String::from("Enter an option")
     }
 
-    fn update(&mut self, _path: &Path, text: &str) -> Write {
+    fn update(&mut self, path: &Path, text: &str) -> Write {
         let index = self.options.iter().enumerate().find_map(|(i, option)| {
             if option.option == text {
                 Some(i)
@@ -148,8 +171,19 @@ impl Kind for Tabs {
         if let Some(index) = index {
             self.is_finished = true;
             self.selected = Some(index);
+
+            let mut paths = self.options[index].widgets.clone();
+            paths.push(path.clone());
+
+            Write::filter(Filter::OneOf(paths))
+        } else if text == "General" {
+            self.is_finished = true;
+            self.selected = None;
+
+            Write::filter(self.filter())
+        } else {
+            Write::default()
         }
-        Write::default()
     }
 
     fn update_nt(&mut self, _key: &Key, value: &Value) {
