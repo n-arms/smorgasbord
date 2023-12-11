@@ -47,15 +47,17 @@ impl Node {
 
     fn update_entry(
         &mut self,
-        mut path: Vec<Key>,
+        path: &mut Vec<Key>,
         rest: &[Key],
         value: network_tables::Value,
         builders: &[Box<dyn Builder>],
     ) -> Result<()> {
         path.push(self.key.clone());
 
-        self.value
-            .update_entry(path.clone(), rest, value, builders)?;
+        if let Err(error) = self.value.update_entry(path, rest, value, builders) {
+            path.pop();
+            return Err(error);
+        }
 
         for widget in &mut self.widgets {
             widget.update_nt(&self.key, &self.value);
@@ -75,6 +77,8 @@ impl Node {
 
         self.widgets.extend(widgets);
         self.partial_widgets = partials;
+
+        path.pop();
 
         Ok(())
     }
@@ -105,7 +109,7 @@ impl Node {
     }
 
     fn from_entry(
-        mut path: Vec<Key>,
+        path: &mut Vec<Key>,
         first: &Key,
         rest: &[Key],
         value: network_tables::Value,
@@ -116,7 +120,10 @@ impl Node {
             Value::Leaf(value)
         } else {
             let mut branches = Nodes::default();
-            branches.create_entry(path.clone(), &rest[0], &rest[1..], value, builders)?;
+            if let Err(error) = branches.create_entry(path, &rest[0], &rest[1..], value, builders) {
+                path.pop();
+                return Err(error);
+            }
             Value::Branch(branches)
         };
 
@@ -132,6 +139,7 @@ impl Node {
         if !widgets.is_empty() {
             node_value.strip_widgets();
         }
+        path.pop();
         Ok(Self {
             key: first.clone(),
             widgets,
@@ -142,15 +150,17 @@ impl Node {
 
     fn create_entry(
         &mut self,
-        mut path: Vec<Key>,
+        mut path: &mut Vec<Key>,
         rest: &[Key],
         value: network_tables::Value,
         builders: &[Box<dyn Builder>],
     ) -> Result<()> {
         path.push(self.key.clone());
 
-        self.value
-            .create_entry(path.clone(), rest, value, builders)?;
+        if let Err(error) = self.value.create_entry(path, rest, value, builders) {
+            path.pop();
+            return Err(error);
+        }
 
         let (widgets, partial_widgets) = Self::run_builders(
             &self.key,
@@ -168,6 +178,8 @@ impl Node {
 
         self.widgets.extend(widgets);
         self.partial_widgets = partial_widgets;
+
+        path.pop();
 
         Ok(())
     }
@@ -218,7 +230,7 @@ impl fmt::Debug for Value {
 impl Value {
     fn update_entry(
         &mut self,
-        path: Vec<Key>,
+        path: &mut Vec<Key>,
         rest: &[Key],
         value: network_tables::Value,
         builders: &[Box<dyn Builder>],
@@ -229,9 +241,9 @@ impl Value {
                 Ok(())
             }
             (Self::Leaf(old_value), [_, ..]) => {
-                Err(Error::ExpectedBranch(path, old_value.clone()).into())
+                Err(Error::ExpectedBranch(path.clone(), old_value.clone()).into())
             }
-            (Self::Branch(_), []) => Err(Error::ExpectedValue(path).into()),
+            (Self::Branch(_), []) => Err(Error::ExpectedValue(path.clone()).into()),
             (Self::Branch(nodes), [first, rest @ ..]) => {
                 nodes.update_entry(path, first, rest, value, builders)
             }
@@ -254,7 +266,7 @@ impl Value {
 
     fn create_entry(
         &mut self,
-        path: Vec<Key>,
+        path: &mut Vec<Key>,
         rest: &[Key],
         value: network_tables::Value,
         builders: &[Box<dyn Builder>],
@@ -265,9 +277,9 @@ impl Value {
                 Ok(())
             }
             (Self::Leaf(old_value), [_, ..]) => {
-                Err(Error::ExpectedBranch(path, old_value.clone()).into())
+                Err(Error::ExpectedBranch(path.clone(), old_value.clone()).into())
             }
-            (Self::Branch(_), []) => Err(Error::ExpectedValue(path).into()),
+            (Self::Branch(_), []) => Err(Error::ExpectedValue(path.clone()).into()),
             (Self::Branch(nodes), [first, tail @ ..]) => {
                 nodes.create_entry(path, first, tail, value, builders)
             }
@@ -317,7 +329,7 @@ pub struct Nodes {
 impl Nodes {
     fn update_entry(
         &mut self,
-        path: Vec<Key>,
+        path: &mut Vec<Key>,
         first: &Key,
         rest: &[Key],
         value: network_tables::Value,
@@ -328,12 +340,12 @@ impl Nodes {
                 return node.update_entry(path, rest, value, builders);
             }
         }
-        Err(Error::NoSuchEntry(path, first.to_string(), rest.to_vec()).into())
+        Err(Error::NoSuchEntry(path.clone(), first.to_string(), rest.to_vec()).into())
     }
 
     fn create_entry(
         &mut self,
-        path: Vec<Key>,
+        path: &mut Vec<Key>,
         first: &Key,
         rest: &[Key],
         value: network_tables::Value,
@@ -433,7 +445,7 @@ impl Tree {
 
     pub fn update_entry(&mut self, entry: &Entry) -> Result<()> {
         self.nodes.update_entry(
-            Vec::new(),
+            &mut Vec::new(),
             &entry.path.first,
             &entry.path.rest,
             entry.value.clone(),
@@ -443,7 +455,7 @@ impl Tree {
 
     pub fn create_entry(&mut self, entry: &Entry) -> Result<()> {
         self.nodes.create_entry(
-            Vec::new(),
+            &mut Vec::new(),
             &entry.path.first,
             &entry.path.rest,
             entry.value.clone(),
