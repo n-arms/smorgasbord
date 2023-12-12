@@ -1,7 +1,10 @@
-use std::{fmt, str::FromStr};
+use std::{
+    fmt,
+    str::{from_utf8, FromStr, Utf8Error},
+};
 
 use network_tables::Value;
-use smartstring::{LazyCompact, SmartString};
+use smol_str::SmolStr;
 use thiserror::Error;
 
 use crate::widgets::tabs::Filter;
@@ -36,7 +39,41 @@ impl Write {
     }
 }
 
-pub type Key = SmartString<LazyCompact>;
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Key {
+    inner: String,
+}
+
+impl From<&str> for Key {
+    fn from(value: &str) -> Self {
+        Self {
+            inner: value.into(),
+        }
+    }
+}
+
+impl Key {
+    pub fn from_utf8(bytes: &[u8]) -> Result<Self, Utf8Error> {
+        let inner = String::from(from_utf8(bytes)?);
+        Ok(Self { inner })
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.inner.as_str()
+    }
+}
+
+impl fmt::Debug for Key {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.fmt(f)
+    }
+}
+
+impl fmt::Display for Key {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.fmt(f)
+    }
+}
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Path {
@@ -98,7 +135,7 @@ impl FromStr for Path {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut options = Vec::new();
 
-        let mut current = Key::new();
+        let mut buf = Vec::new();
 
         let mut needs_slash = true;
 
@@ -109,13 +146,13 @@ impl FromStr for Path {
                 }
                 needs_slash = false;
             } else if char == '/' {
-                options.push(current);
-                current = Key::new();
+                options.push(Key::from_utf8(&buf).unwrap());
+                buf.clear();
             } else {
-                current.push(char);
+                buf.push(char as u8);
             }
         }
-        options.push(current);
+        options.push(Key::from_utf8(&buf).unwrap());
 
         options.try_into().map_err(|_| PathError::Empty)
     }

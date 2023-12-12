@@ -150,7 +150,7 @@ impl Node {
 
     fn create_entry(
         &mut self,
-        mut path: &mut Vec<Key>,
+        path: &mut Vec<Key>,
         rest: &[Key],
         value: network_tables::Value,
         builders: &[Box<dyn Builder>],
@@ -443,22 +443,22 @@ impl Tree {
         }
     }
 
-    pub fn update_entry(&mut self, entry: &Entry) -> Result<()> {
+    pub fn update_entry(&mut self, entry: Entry) -> Result<()> {
         self.nodes.update_entry(
             &mut Vec::new(),
             &entry.path.first,
             &entry.path.rest,
-            entry.value.clone(),
+            entry.value,
             &self.builders,
         )
     }
 
-    pub fn create_entry(&mut self, entry: &Entry) -> Result<()> {
+    pub fn create_entry(&mut self, entry: Entry) -> Result<()> {
         self.nodes.create_entry(
             &mut Vec::new(),
             &entry.path.first,
             &entry.path.rest,
-            entry.value.clone(),
+            entry.value,
             &self.builders,
         )
     }

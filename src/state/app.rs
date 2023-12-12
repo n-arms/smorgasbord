@@ -1,7 +1,7 @@
 use anyhow::Result;
-use crossterm::event::{self, Event::Key, KeyCode::Char};
+use crossterm::event::{self, KeyCode::Char};
 use crossterm::event::{Event, KeyCode};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use crate::backend::{Backend, Update};
 use crate::state::packing::GridPosition;
@@ -123,19 +123,20 @@ impl<B: Backend> App<B> {
         } = self.network_table.update();
 
         for entry in to_update {
-            self.widget_tree.update_entry(&entry)?;
+            self.widget_tree.update_entry(entry)?;
         }
 
         for entry in to_create {
-            self.widget_tree.create_entry(&entry)?;
+            self.widget_tree.create_entry(entry)?;
         }
 
+        // TODO: implement a better filtering method
         let all_widgets = self
             .widget_tree
             .widgets()
             .into_iter()
             .filter(|widget| self.filter.contains(widget))
-            .map(|widget| widget.title.clone())
+            .map(|widget| &widget.title)
             .collect();
 
         self.packing.add_all(all_widgets, &self.widget_tree);

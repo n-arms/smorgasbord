@@ -64,7 +64,7 @@ impl widget::Builder for Builder {
             return BuildResult::None;
         };
 
-        if key.starts_with('.') {
+        if key.as_str().starts_with('.') {
             BuildResult::None
         } else {
             BuildResult::Complete(Box::new(Simple {

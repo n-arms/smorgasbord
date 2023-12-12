@@ -1,4 +1,6 @@
-use super::{Backend, Entry, Key, Path, Status, Update, Write};
+#![allow(dead_code)]
+
+use super::{Backend, Entry, Key, Path, Status, Update};
 use network_tables::rmpv::Integer;
 use network_tables::Value;
 use std::collections::HashMap;
@@ -89,11 +91,12 @@ fn rand_string() -> Value {
 }
 
 fn rand_key() -> Key {
-    let mut string = Key::new();
-    for _ in 0..fastrand::usize(3..6) {
-        string.push(fastrand::alphanumeric());
+    let mut buf = [0u8; 6];
+    let size = fastrand::usize(3..6);
+    for i in 0..size {
+        buf[i] = fastrand::alphanumeric() as u8;
     }
-    string
+    Key::from_utf8(&buf[..size]).unwrap()
 }
 
 fn chooser() -> T {

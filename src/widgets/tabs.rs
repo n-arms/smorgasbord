@@ -4,7 +4,6 @@ use ratatui::{
     widgets::{Paragraph, Widget},
 };
 use thiserror::Error;
-use tracing::{event, Level};
 
 use crate::{
     backend::{Key, Path, PathError, Write},
@@ -102,7 +101,7 @@ impl TryFrom<&Value> for Tabs {
         let mut options = Vec::new();
 
         for node in nodes.iter() {
-            if node.key.starts_with('.') {
+            if node.key.as_str().starts_with('.') {
                 continue;
             }
             let option = node.key.clone();

@@ -132,14 +132,14 @@ impl Packing {
         self.occupied.clear();
     }
 
-    pub fn add_all(&mut self, mut all_widgets: Vec<Path>, widget_tree: &Tree) {
+    pub fn add_all(&mut self, mut all_widgets: Vec<&Path>, widget_tree: &Tree) {
         all_widgets.retain(|path| !self.titles.contains(&path));
         all_widgets.sort_by_key(|path| widget_tree.get(path).map(|widget| widget.size().area()));
         all_widgets.reverse();
 
         for widget in all_widgets {
             let size = widget_tree.get(&widget).unwrap().size();
-            self.add_unchecked(widget, size);
+            self.add_unchecked(widget.clone(), size);
         }
     }
 }

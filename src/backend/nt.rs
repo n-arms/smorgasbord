@@ -3,6 +3,7 @@
 use core::fmt;
 use std::{
     collections::HashSet,
+    os::unix::prelude::OsStrExt,
     path::{Component, PathBuf},
 };
 
@@ -12,7 +13,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tracing::{event, Level};
 
 use super::{
-    backend::{Entry, Path, Status, StatusUpdate, Update, Write},
+    backend::{Entry, Path, Status, StatusUpdate, Update},
     nt_worker::Worker,
     Backend, Key,
 };
@@ -119,7 +120,7 @@ pub fn from_nt_path(path: String) -> Result<Path, KeyError> {
         .components()
         .filter_map(|comp| {
             if let Component::Normal(str) = comp {
-                Some(Key::from(str.to_string_lossy()))
+                Some(Key::from_utf8(str.as_bytes()).unwrap())
             } else {
                 None
             }

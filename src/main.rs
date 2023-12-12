@@ -19,16 +19,18 @@ mod view;
 mod widget_tree;
 mod widgets;
 
-use std::{fs, time::Duration};
+use std::{
+    fs,
+    time::{Duration, Instant},
+};
 
 use anyhow::Result;
-use backend::mock::{self, TMap, T};
+use backend::mock::{self};
 use crossterm::{
-    event::{self as term_event, KeyEvent, KeyModifiers},
+    event::{self as term_event},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use network_tables::Value;
 use ratatui::prelude::{CrosstermBackend, Terminal};
 use state::App;
 use tracing::{event, Level};
@@ -71,12 +73,15 @@ fn run() -> Result<()> {
         network_table,
     );
     t.draw(|f| app.render(f))?;
+    let mut total_time = Duration::ZERO;
+    let mut last;
     loop {
         let event = if term_event::poll(Duration::from_millis(20))? {
             Some(term_event::read()?)
         } else {
             None
         };
+        last = Instant::now();
         match app.update(event) {
             Ok(result) => {
                 if result {
@@ -89,10 +94,14 @@ fn run() -> Result<()> {
         }
         t.draw(|f| app.render(f))?;
 
+        total_time += last.elapsed();
+
         if app.start_time.elapsed() > Duration::from_secs(15) {
             break;
         }
     }
+
+    event!(Level::INFO, "took a cpu total of {total_time:?} to run");
 
     Ok(())
 }
