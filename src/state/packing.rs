@@ -24,17 +24,24 @@ impl Packing {
     pub fn new(size: Size) -> Self {
         Self {
             size,
-            widgets: Default::default(),
-            titles: Default::default(),
+            widgets: HashMap::default(),
+            titles: HashSet::default(),
             occupied: vec![false; size.width * size.height],
         }
     }
 
     fn is_occupied(&self, position: GridPosition) -> bool {
+        if position.x >= self.size.width || position.y >= self.size.height {
+            return true;
+        }
         self.occupied[position.x + position.y * self.size.width]
     }
 
     fn set_occupied(&mut self, position: GridPosition, is_occupied: bool) {
+        if position.x >= self.size.width || position.y >= self.size.height {
+            return;
+        }
+
         self.occupied[position.x + position.y * self.size.width] = is_occupied;
     }
 
@@ -129,16 +136,16 @@ impl Packing {
     pub fn clear(&mut self) {
         self.widgets.clear();
         self.titles.clear();
-        self.occupied.clear();
+        self.occupied = vec![false; self.size.width * self.size.height];
     }
 
     pub fn add_all(&mut self, mut all_widgets: Vec<&Path>, widget_tree: &Tree) {
-        all_widgets.retain(|path| !self.titles.contains(&path));
+        all_widgets.retain(|path| !self.titles.contains(path));
         all_widgets.sort_by_key(|path| widget_tree.get(path).map(|widget| widget.size().area()));
         all_widgets.reverse();
 
         for widget in all_widgets {
-            let size = widget_tree.get(&widget).unwrap().size();
+            let size = widget_tree.get(widget).unwrap().size();
             self.add_unchecked(widget.clone(), size);
         }
     }

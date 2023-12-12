@@ -93,8 +93,8 @@ fn rand_string() -> Value {
 fn rand_key() -> Key {
     let mut buf = [0u8; 6];
     let size = fastrand::usize(3..6);
-    for i in 0..size {
-        buf[i] = fastrand::alphanumeric() as u8;
+    for item in buf.iter_mut().take(size) {
+        *item = fastrand::alphanumeric() as u8;
     }
     Key::from_utf8(&buf[..size]).unwrap()
 }
@@ -103,7 +103,7 @@ fn chooser() -> T {
     let r#type: T = Box::new(Value::String("String Chooser".into()));
     let mut option_vec = Vec::new();
     for _ in 0..fastrand::usize(3..6) {
-        option_vec.push(rand_string())
+        option_vec.push(rand_string());
     }
     let selected: T = Box::new(option_vec[0].clone());
     let default: T = Box::new(option_vec[0].clone());
@@ -123,7 +123,7 @@ pub fn stressing_example(widgets: usize) -> TMap {
         smartdashboard_map.insert(rand_key(), chooser());
     }
 
-    for _ in 0..(widgets - widgets / 3) {
+    for _ in 0..(widgets - 2 * (widgets / 3)) {
         smartdashboard_map.insert(rand_key(), Box::new(Value::F32(0.0)));
     }
 

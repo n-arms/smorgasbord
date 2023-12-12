@@ -4,7 +4,6 @@ use std::{
 };
 
 use network_tables::Value;
-use smol_str::SmolStr;
 use thiserror::Error;
 
 use crate::widgets::tabs::Filter;
@@ -30,7 +29,7 @@ impl Write {
         }
     }
 
-    pub fn entries<'a>(&'a self) -> impl Iterator<Item = &'a Entry> {
+    pub fn entries(&self) -> impl Iterator<Item = &'_ Entry> {
         self.entries.iter()
     }
 

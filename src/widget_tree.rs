@@ -66,7 +66,7 @@ impl Node {
         let (widgets, partials) = Self::run_builders(
             &self.key,
             &self.value,
-            &path,
+            path,
             builders,
             &self.partial_widgets,
         );
@@ -130,7 +130,7 @@ impl Node {
         let (widgets, partial_widgets) = Self::run_builders(
             first,
             &node_value,
-            &path,
+            path,
             builders,
             &(0..builders.len())
                 .map(|index| BuilderIndex { index })
@@ -165,7 +165,7 @@ impl Node {
         let (widgets, partial_widgets) = Self::run_builders(
             &self.key,
             &self.value,
-            &path,
+            path,
             builders,
             &(0..builders.len())
                 .map(|index| BuilderIndex { index })
