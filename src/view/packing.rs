@@ -28,6 +28,7 @@ pub struct State {
 impl StatefulWidget for View<'_> {
     type State = State;
 
+    #[allow(clippy::similar_names)]
     fn render(
         self,
         area: ratatui::prelude::Rect,

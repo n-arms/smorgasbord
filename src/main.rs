@@ -1,5 +1,5 @@
+#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 #![allow(clippy::module_inception)]
-#![warn(clippy::pedantic)]
 
 macro_rules! map(
     { $($key:expr => $value:expr),+ } => {
@@ -83,7 +83,7 @@ fn run() -> Result<()> {
             None
         };
         last = Instant::now();
-        match app.update(event) {
+        match app.update(&event) {
             Ok(result) => {
                 if result {
                     break;

@@ -35,8 +35,8 @@ pub enum Filter {
 impl Filter {
     pub fn contains(&self, widget: &widgets::Widget) -> bool {
         match self {
-            Filter::NoneOf(paths) => !paths.contains(&widget.title),
-            Filter::OneOf(paths) => paths.contains(&widget.title),
+            Self::NoneOf(paths) => !paths.contains(&widget.title),
+            Self::OneOf(paths) => paths.contains(&widget.title),
         }
     }
 }
@@ -66,6 +66,7 @@ pub enum Error {
 }
 
 impl Tabs {
+    #[allow(clippy::option_if_let_else)]
     pub fn filter(&self) -> Filter {
         if let Some(index) = self.selected {
             let paths = &self.options[index].widgets;
@@ -186,7 +187,7 @@ impl Kind for Tabs {
     }
 
     fn update_nt(&mut self, _key: &Key, value: &Value) {
-        if let Ok(updated) = Tabs::try_from(value) {
+        if let Ok(updated) = Self::try_from(value) {
             self.options = updated.options;
         }
     }

@@ -30,7 +30,7 @@ pub struct Size {
     pub height: usize,
 }
 impl Size {
-    pub fn area(&self) -> usize {
+    pub const fn area(&self) -> usize {
         self.width * self.height
     }
 }

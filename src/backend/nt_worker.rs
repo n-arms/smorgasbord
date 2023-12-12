@@ -8,7 +8,7 @@ use std::{
 
 use network_tables::{
     rmpv::ValueRef,
-    v4::{Client, PublishedTopic, Subscription, SubscriptionOptions, Type},
+    v4::{Client, Config, PublishedTopic, Subscription, SubscriptionOptions, Type},
 };
 use tokio::{
     select,
@@ -70,25 +70,21 @@ impl SubscribedClient {
                     value: message.data,
                 });
             }
-            *self = SubscribedClient::new(self.status_sender.clone()).await;
+            *self = Self::new(self.status_sender.clone()).await?;
         }
     }
 
-    async fn new(status_sender: UnboundedSender<StatusUpdate>) -> Self {
-        status_sender
-            .send(StatusUpdate::IsConnectedChange(false))
-            .unwrap();
+    async fn new(status_sender: UnboundedSender<StatusUpdate>) -> Result<Self> {
+        status_sender.send(StatusUpdate::IsConnectedChange(false))?;
         let client = connect_to_client().await;
-        let subscription = subscribe(&client).await;
-        status_sender
-            .send(StatusUpdate::IsConnectedChange(true))
-            .unwrap();
-        Self {
+        let subscription = subscribe(&client).await?;
+        status_sender.send(StatusUpdate::IsConnectedChange(true))?;
+        Ok(Self {
             client,
             subscription,
             published_topics: HashMap::new(),
             status_sender,
-        }
+        })
     }
 }
 
@@ -98,10 +94,23 @@ impl Worker {
         write_receiver: UnboundedReceiver<Entry>,
         status_sender: UnboundedSender<StatusUpdate>,
     ) -> Self {
+        let client;
+        loop {
+            let maybe_client = SubscribedClient::new(status_sender.clone()).await;
+            match maybe_client {
+                Ok(c) => {
+                    client = c;
+                    break;
+                }
+                Err(error) => {
+                    event!(Level::ERROR, "subscribed client error {error:?}");
+                }
+            }
+        }
         Self {
-            client: SubscribedClient::new(status_sender.clone()).await,
             read_sender,
             write_receiver,
+            client,
         }
     }
 
@@ -110,12 +119,17 @@ impl Worker {
             select! {
                 to_write = self.write_receiver.recv() => {
                     if let Some(entry) = to_write {
-                        self.client.write(entry).await.unwrap();
+                        if let Err(error) = self.client.write(entry).await {
+                            event!(Level::ERROR, "pipe error while sending write to subscribed client: {error:?}");
+                        }
                     }
                 },
                 to_read = self.client.read() => {
                     if let Ok(entry) = to_read {
-                        self.read_sender.send(entry).unwrap();
+
+                        if let Err(error) = self.read_sender.send(entry) {
+                            event!(Level::ERROR, "pipe error while sending entry to main nt thread: {error:?}");
+                        }
                     }
                 }
             }
@@ -127,9 +141,7 @@ async fn connect_to_client() -> Client {
     loop {
         let maybe_client = network_tables::v4::Client::try_new_w_config(
             SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 5810),
-            network_tables::v4::client_config::Config {
-                ..Default::default()
-            },
+            Config::default(),
         )
         .await;
         if let Ok(c) = maybe_client {
@@ -139,7 +151,7 @@ async fn connect_to_client() -> Client {
     }
 }
 
-async fn subscribe(client: &Client) -> Subscription {
+async fn subscribe(client: &Client) -> Result<Subscription> {
     client
         .subscribe_w_options(
             &["/SmartDashboard"],
@@ -150,7 +162,7 @@ async fn subscribe(client: &Client) -> Subscription {
             }),
         )
         .await
-        .unwrap()
+        .map_err(Into::into)
 }
 
 fn value_type(value: ValueRef<'_>) -> Type {
@@ -162,7 +174,7 @@ fn value_type(value: ValueRef<'_>) -> Type {
         ValueRef::String(_) => Type::String,
         ValueRef::Binary(_) => Type::Raw,
         ValueRef::Array(array) => {
-            let inner_type = value_type(array.first().cloned().unwrap_or(ValueRef::from(0)));
+            let inner_type = array.first().cloned().map_or(Type::Int, value_type);
             match inner_type {
                 Type::Boolean => Type::BooleanArray,
                 Type::Double => Type::DoubleArray,
@@ -179,4 +191,14 @@ fn value_type(value: ValueRef<'_>) -> Type {
             todo!()
         }
     }
+}
+
+pub async fn run_worker(
+    read_sender: UnboundedSender<Entry>,
+    write_receiver: UnboundedReceiver<Entry>,
+    status_sender: UnboundedSender<StatusUpdate>,
+) -> Result<()> {
+    let worker = Worker::new(read_sender, write_receiver, status_sender).await;
+    worker.run().await;
+    Ok(())
 }

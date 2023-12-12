@@ -204,6 +204,13 @@ impl Tree for HashMap<Key, Box<dyn Tree>> {
 static START: Mutex<Option<Instant>> = Mutex::new(None);
 
 impl Tree for Value {
+    // this many lint allows is acceptable here because this logic is basically just for fiddling with values
+    #[allow(
+        clippy::option_if_let_else,
+        clippy::same_functions_in_if_condition,
+        clippy::cast_sign_loss,
+        clippy::cast_possible_truncation
+    )]
     fn update(&mut self, path: Path) -> Update {
         let mut start = START.lock().unwrap();
 
@@ -211,25 +218,26 @@ impl Tree for Value {
             start_time.elapsed().as_millis() > 500
         } else {
             *start = Some(Instant::now());
+            drop(start);
             false
         };
 
         match self {
-            Value::Integer(value) => {
+            Self::Integer(value) => {
                 if fastrand::bool() {
                     *value = Integer::from(value.as_i64().unwrap() + 1);
                 } else if fastrand::bool() {
                     *value = Integer::from((value.as_f64().unwrap() * 0.9) as u64);
                 }
             }
-            Value::F32(value) => {
+            Self::F32(value) => {
                 if fastrand::bool() {
                     *value += 1.0;
                 } else if fastrand::bool() {
                     *value *= 0.9;
                 }
             }
-            Value::F64(value) => {
+            Self::F64(value) => {
                 if fastrand::bool() {
                     *value += 1.0;
                 } else if fastrand::bool() {

@@ -90,7 +90,7 @@ impl TryFrom<&Value> for SendableChooser {
             })
             .ok_or(Error::IllegalSelection)?;
 
-        Ok(SendableChooser {
+        Ok(Self {
             options,
             active,
             default,
@@ -139,7 +139,7 @@ impl Kind for SendableChooser {
     }
 
     fn update_nt(&mut self, _key: &Key, value: &Value) {
-        if let Ok(value) = SendableChooser::try_from(value) {
+        if let Ok(value) = Self::try_from(value) {
             self.options = value.options;
             self.default = value.default;
             self.active = value.active;

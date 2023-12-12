@@ -44,7 +44,7 @@ pub enum Error {
 }
 
 impl<B: Backend> App<B> {
-    pub fn update(&mut self, event: Option<Event>) -> Result<bool> {
+    pub fn update(&mut self, event: &Option<Event>) -> Result<bool> {
         self.check_health()?;
 
         if let Some(Event::Key(key)) = event {

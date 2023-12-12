@@ -7,7 +7,7 @@ pub trait NTValue {
 
 impl NTValue for Value {
     fn try_to_string(&self) -> Option<String> {
-        if let Value::String(string) = self {
+        if let Self::String(string) = self {
             string.clone().into_str()
         } else {
             None
@@ -15,7 +15,7 @@ impl NTValue for Value {
     }
 
     fn try_to_string_array(&self) -> Option<Vec<String>> {
-        if let Value::Array(array) = self {
+        if let Self::Array(array) = self {
             array.iter().map(NTValue::try_to_string).collect()
         } else {
             None

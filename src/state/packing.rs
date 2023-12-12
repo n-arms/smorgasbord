@@ -82,18 +82,11 @@ impl Packing {
         }
     }
 
-    pub fn add(&mut self, path: Path, widgets: &Tree) {
-        if self.titles.get(&path).is_none() {
-            let size = widgets.get(&path).unwrap().size();
-            self.add_unchecked(path, size);
-        }
-    }
-
-    pub fn get_width(&self) -> usize {
+    pub const fn get_width(&self) -> usize {
         self.size.width
     }
 
-    pub fn get_height(&self) -> usize {
+    pub const fn get_height(&self) -> usize {
         self.size.height
     }
 

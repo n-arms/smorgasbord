@@ -221,8 +221,8 @@ pub enum Value {
 impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Leaf(value) => write!(f, "{value}"),
-            Value::Branch(nodes) => nodes.fmt(f),
+            Self::Leaf(value) => write!(f, "{value}"),
+            Self::Branch(nodes) => nodes.fmt(f),
         }
     }
 }
@@ -251,12 +251,12 @@ impl Value {
     }
 
     fn widgets<'a>(&'a self, widgets: &mut Vec<&'a Widget>) {
-        if let Value::Branch(nodes) = self {
+        if let Self::Branch(nodes) = self {
             nodes.widgets(widgets);
         }
     }
 
-    pub fn try_get_nodes(&self) -> Option<&Nodes> {
+    pub const fn try_get_nodes(&self) -> Option<&Nodes> {
         if let Self::Branch(nodes) = self {
             Some(nodes)
         } else {
@@ -305,7 +305,7 @@ impl Value {
         mut rest: impl ExactSizeIterator<Item = &'a Key> + fmt::Debug,
     ) -> Option<&Widget> {
         match (self, rest.next()) {
-            (Value::Branch(nodes), Some(first)) => nodes.get(first, rest),
+            (Self::Branch(nodes), Some(first)) => nodes.get(first, rest),
             _ => None,
         }
     }
@@ -315,7 +315,7 @@ impl Value {
         mut rest: impl ExactSizeIterator<Item = &'a Key>,
     ) -> Option<&mut Widget> {
         match (self, rest.next()) {
-            (Value::Branch(nodes), Some(first)) => nodes.get_mut(first, rest),
+            (Self::Branch(nodes), Some(first)) => nodes.get_mut(first, rest),
             _ => None,
         }
     }

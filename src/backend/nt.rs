@@ -10,11 +10,11 @@ use std::{
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
-use tracing::{event, Level};
+
 
 use super::{
     backend::{Entry, Path, Status, StatusUpdate, Update},
-    nt_worker::Worker,
+    nt_worker::{run_worker},
     Backend, Key,
 };
 use anyhow::Result;
@@ -70,10 +70,7 @@ impl Nt {
         let (write_sender, write_receiver) = unbounded_channel();
         let (status_sender, status_receiver) = unbounded_channel();
 
-        tokio::spawn(async move {
-            let worker = Worker::new(read_sender, write_receiver, status_sender).await;
-            worker.run().await;
-        });
+        tokio::spawn(async move { run_worker(read_sender, write_receiver, status_sender).await });
 
         Self {
             read_receiver,
@@ -103,7 +100,6 @@ impl Nt {
     }
 
     fn write_update(&self, entry: Entry) {
-        event!(Level::INFO, "writing {:?}", entry);
         self.write_sender.send(entry).unwrap();
     }
 }
