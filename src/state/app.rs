@@ -136,10 +136,10 @@ impl<B: Backend> App<B> {
             .widgets()
             .into_iter()
             .filter(|widget| self.filter.contains(widget))
-            .map(|widget| &widget.title)
+            .map(|widget| (&widget.title, widget.size()))
             .collect();
 
-        self.packing.add_all(all_widgets, &self.widget_tree);
+        self.packing.add_all(all_widgets);
 
         Ok(false)
     }

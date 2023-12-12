@@ -62,8 +62,8 @@ fn run() -> Result<()> {
 
     //let network_table = Nt::new();
 
-    //let network_table = mock::stressing_example(80);
-    let network_table = mock::example_dashboard();
+    let network_table = mock::stressing_example(80);
+    //let network_table = mock::example_dashboard();
 
     // application state
     let mut app = App::new(
@@ -77,7 +77,7 @@ fn run() -> Result<()> {
     let mut total_time = Duration::ZERO;
     let mut last;
     loop {
-        let event = if term_event::poll(Duration::from_millis(250))? {
+        let event = if term_event::poll(Duration::from_millis(20))? {
             Some(term_event::read()?)
         } else {
             None
@@ -96,11 +96,9 @@ fn run() -> Result<()> {
         t.draw(|f| app.render(f))?;
 
         total_time += last.elapsed();
-        /*
         if app.start_time.elapsed() > Duration::from_secs(15) {
             break;
         }
-        */
     }
 
     event!(Level::INFO, "took a cpu total of {total_time:?} to run");
